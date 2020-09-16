@@ -44,7 +44,7 @@ for file_name in pred_zips:
 	    print('Done!') 
 
 #config files (not a zip anymore, just move)
-shutil.move(base_path+"pb0_config.json", base_bath+"cfg/")
+shutil.move(base_path+"pb0_config.json", base_path+"cfg/")
 
 #meteo
 input_zips = glob.glob(base_path+"inputs*.zip")
