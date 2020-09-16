@@ -28,7 +28,7 @@ means_per_lake[:] = np.nan
 var_per_lake = np.zeros((n_lakes,8),dtype=np.float_)
 var_per_lake[:] = np.nan
 
-
+#calculate averages and std_dev for each input driver across all lakes
 for lake_ind, name in enumerate(ids):
     nid = 'nhdhr_' + name
 
@@ -56,7 +56,9 @@ for lake_ind, name in enumerate(ids):
         end_date = "{:%Y-%m-%d}".format(obs.values[-1,1])
     except:
         end_date = obs.values[-1,1]
-    pdb.set_trace()
+
+    start_date = start_date.encode()
+    end_date = end_date.encode()
     lower_cutoff = np.where(meteo_dates == start_date)[0][0] #457
     if len(np.where(meteo_dates == end_date)[0]) < 1: 
         print("observation beyond meteorological data! data will only be used up to the end of meteorological data")
