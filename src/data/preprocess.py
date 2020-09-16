@@ -80,7 +80,6 @@ for lake_ind, name in enumerate(ids):
     n_total_dates = glm_temps.shape[0]
 
     #define depths from glm file
-    pdb.set_trace()
     n_depths = glm_temps.shape[1]-1 #minus date 
     max_depth = 0.5*(n_depths-1)
     depths = np.arange(0, max_depth+0.5, 0.5)
