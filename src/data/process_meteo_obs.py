@@ -35,6 +35,7 @@ for nid in ids: #for each new additional lake
     
     if not os.path.exists(meteo_path):
         meteo_fn = metadata[metadata['site_id'] == "nhdhr_"+nid]['meteo_filename']
+        pdb.set_trace()
         meteo_f = pd.read_csv(meteo_fn, dtype='str')
         meteo_f.drop(np.where(meteo_f['Rain'] == 'Rain')[0], inplace=True) #drop dud rows
         meteo_f.reset_index(inplace=True)
