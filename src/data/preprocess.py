@@ -56,6 +56,7 @@ for lake_ind, name in enumerate(ids):
         end_date = "{:%Y-%m-%d}".format(obs.values[-1,1])
     except:
         end_date = obs.values[-1,1]
+    pdb.set_trace()
     lower_cutoff = np.where(meteo_dates == start_date)[0][0] #457
     if len(np.where(meteo_dates == end_date)[0]) < 1: 
         print("observation beyond meteorological data! data will only be used up to the end of meteorological data")
