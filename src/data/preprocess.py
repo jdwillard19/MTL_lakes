@@ -70,7 +70,6 @@ for lake_ind, name in enumerate(ids):
 
 
     #read from file and filter dates
-    pdb.set_trace()
     meteo = np.genfromtxt(base_path+'meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', usecols=(3,4,5,6,7,8,9), skip_header=1)
     meteo = meteo[lower_cutoff:upper_cutoff,:]
     means_per_lake[lake_ind,1:] = [meteo[:,a].mean() for a in range(n_features)]
@@ -81,7 +80,8 @@ for lake_ind, name in enumerate(ids):
     n_total_dates = glm_temps.shape[0]
 
     #define depths from glm file
-    n_depths = glm_temps.shape[1]-1 #minus date and ice flag
+    pdb.set_trace()
+    n_depths = glm_temps.shape[1]-1 #minus date 
     max_depth = 0.5*(n_depths-1)
     depths = np.arange(0, max_depth+0.5, 0.5)
     depths_mean = depths.mean()
