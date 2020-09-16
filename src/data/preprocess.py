@@ -18,7 +18,7 @@ import datetime
 base_path = "../../data/raw/sb_mtl_data_release/"
 metadata = pd.read_feather("../../metadata/lake_metadata.feather")
 ids = metadata['site_id'].values
-
+n_features = 7
 
 n_lakes = ids.shape[0]
 
