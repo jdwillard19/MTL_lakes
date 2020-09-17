@@ -35,7 +35,9 @@ for nid in ids: #for each new additional lake
     assert len(hs) == 1
     assert len(As) == 1
 
-    pdb.set_trace()
+    new_hs = cfg['nhdhr_91692315']['morphometry']['H']
+    new_As = cfg['nhdhr_91692315']['morphometry']['H']
+
     #list2elem
     hs = hs[0]
     As = As[0]
@@ -44,6 +46,7 @@ for nid in ids: #for each new additional lake
     hs = np.array([float(i) for i in hs.split(",")])
     As = np.array([float(i) for i in As.split(",")])
 
+    pdb.set_trace()
     #get into posi depth form
     hs = -(np.flip(hs,axis=0) - hs.max())
     As = np.flip(As,axis=0)
