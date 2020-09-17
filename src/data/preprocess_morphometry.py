@@ -40,7 +40,7 @@ for nid in ids: #for each new additional lake
         csv.append(",".join([hs[i], As[i]]))
 
 
-    with open("../../data/processed/lake_data/"+name+"/geometry",'w') as file:
+    with open("../../data/processed/"+name+"/geometry",'w') as file:
         for line in csv:
             file.write(line)
             file.write('\n')
