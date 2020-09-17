@@ -409,12 +409,14 @@ if pretrain:
                 print("depth consistency converged")
         if converged and eps_converged >= 10:
             print("pretraining finished in " + str(epoch) +" epochs")
-
+            saveModel(lstm_net.state_dict(), optimizer.state_dict(), save_path)
             break
 
         if epoch_since_best == patience:
             print("pretraining finished in " + str(epoch) +" epochs")
+            saveModel(lstm_net.state_dict(), optimizer.state_dict(), save_path)
             continue
+saveModel(lstm_net.state_dict(), optimizer.state_dict(), save_path)
      
 
 
