@@ -435,7 +435,7 @@ ec_lambda = .01
 dc_lambda = 1.
 lambda1 = 0
 win_shift = 175 #how much to slide the window on training set each time
-data_dir = "../../data/processed/lake_data/"+lakename+"/"
+data_dir = "../../data/processed/"+lakename+"/"
 
 #paths to save
 
@@ -451,7 +451,6 @@ save_path = "../../../models/"+lakename+"/PGRNN_source_model_0.7"
 hypsography) = buildLakeDataForRNN_manylakes_finetune2(lakename, data_dir, seq_length, n_features,
                                    win_shift = win_shift, begin_loss_ind = begin_loss_ind, 
                                    outputFullTestMatrix=True, allTestSeq=True) 
-pdb.set_trace()
 n_depths = torch.unique(all_data[:,:,0]).size()[0]
 u_depths = np.unique(tst_data[:,0,0])
 
