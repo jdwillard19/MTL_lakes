@@ -29,82 +29,82 @@ var_per_lake = np.zeros((n_lakes,8),dtype=np.float_)
 var_per_lake[:] = np.nan
 
 #calculate averages and std_dev for each input driver across all lakes
-# for lake_ind, name in enumerate(ids):
-#     nid = 'nhdhr_' + name
+for lake_ind, name in enumerate(ids):
+    nid = 'nhdhr_' + name
 
-#     print("(",lake_ind,"/",str(len(ids)),") ","pre ", name)
+    print("(",lake_ind,"/",str(len(ids)),") ","pre ", name)
 
-#     #read/format meteorological data for numpy
-#     meteo_dates = np.loadtxt(base_path+'meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', dtype=np.string_ , usecols=2)[1:]
-#     print("first meteo date", meteo_dates[0])
-
-
-#     obs = pd.read_feather(base_path+'obs/nhdhr_'+name+'_obs.feather')
-#     obs['date2'] = pd.to_datetime(obs.date)
-#     obs.sort_values('date2', inplace=True)
-#     print("first obs date: ",obs['date2'].values[0])
-
-#     #lower/uppur cutoff indices (to match observations)
-
-#     start_date = []
-#     end_date = []
-#     try:
-#         start_date = "{:%Y-%m-%d}".format(obs.values[0,1])
-#     except:
-#         start_date = obs.values[0,1]
-#     try:
-#         end_date = "{:%Y-%m-%d}".format(obs.values[-1,1])
-#     except:
-#         end_date = obs.values[-1,1]
-
-#     start_date = start_date.encode()
-#     end_date = end_date.encode()
-#     lower_cutoff = np.where(meteo_dates == start_date)[0][0] #457
-#     if len(np.where(meteo_dates == end_date)[0]) < 1: 
-#         print("observation beyond meteorological data! data will only be used up to the end of meteorological data")
-#         upper_cutoff = meteo_dates.shape[0]
-#     else:
-#         upper_cutoff = np.where(meteo_dates == end_date)[0][0]+1 #14233
-
-#     meteo_dates = meteo_dates[lower_cutoff:upper_cutoff]
+    #read/format meteorological data for numpy
+    meteo_dates = np.loadtxt(base_path+'meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', dtype=np.string_ , usecols=2)[1:]
+    print("first meteo date", meteo_dates[0])
 
 
-#     #read from file and filter dates
-#     meteo = np.genfromtxt(base_path+'meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', usecols=(3,4,5,6,7,8,9), skip_header=1)
-#     meteo = meteo[lower_cutoff:upper_cutoff,:]
-#     means_per_lake[lake_ind,1:] = [meteo[:,a].mean() for a in range(n_features)]
-#     var_per_lake[lake_ind,1:] = [meteo[:,a].std() ** 2 for a in range(n_features)]
+    obs = pd.read_feather(base_path+'obs/nhdhr_'+name+'_obs.feather')
+    obs['date2'] = pd.to_datetime(obs.date)
+    obs.sort_values('date2', inplace=True)
+    print("first obs date: ",obs['date2'].values[0])
 
-#     glm_temps = pd.read_csv(base_path+'predictions/pb0_nhdhr_'+name+'_temperatures.csv')
-#     glm_temps = glm_temps.values[:]
-#     n_total_dates = glm_temps.shape[0]
+    #lower/uppur cutoff indices (to match observations)
 
-#     #define depths from glm file
-#     n_depths = glm_temps.shape[1]-1 #minus date 
-#     max_depth = 0.5*(n_depths-1)
-#     depths = np.arange(0, max_depth+0.5, 0.5)
-#     depths_mean = depths.mean()
-#     depths_var = depths.std() ** 2
-#     means_per_lake[lake_ind, 0] = depths_mean
-#     var_per_lake[lake_ind, 0] = depths_var
+    start_date = []
+    end_date = []
+    try:
+        start_date = "{:%Y-%m-%d}".format(obs.values[0,1])
+    except:
+        start_date = obs.values[0,1]
+    try:
+        end_date = "{:%Y-%m-%d}".format(obs.values[-1,1])
+    except:
+        end_date = obs.values[-1,1]
 
-# mean_feats = np.average(means_per_lake, axis=0)   
-# std_feats = np.average(var_per_lake ** (.5), axis=0)   
-# print("mean feats: ", repr(mean_feats))
-# print("std feats: ", repr(std_feats))
-# assert mean_feats.shape[0] == 8
-# assert std_feats.shape[0] == 8
-# assert not np.isnan(np.sum(mean_feats))
-# assert not np.isnan(np.sum(std_feats))
+    start_date = start_date.encode()
+    end_date = end_date.encode()
+    lower_cutoff = np.where(meteo_dates == start_date)[0][0] #457
+    if len(np.where(meteo_dates == end_date)[0]) < 1: 
+        print("observation beyond meteorological data! data will only be used up to the end of meteorological data")
+        upper_cutoff = meteo_dates.shape[0]
+    else:
+        upper_cutoff = np.where(meteo_dates == end_date)[0][0]+1 #14233
 
-# # sys.exit()
-# old_mean_feats =[5.35588822, 1.67022467e+02, 2.92219247e+02, 6.82630486e+00, 7.36783045e+01, 4.79831775e+00, 1.84282192e-03, 2.29087107e-03]
-# old_std_feats = [3.23048181, 8.52233583e+01, 6.08592310e+01, 1.27621347e+01,1.29242034e+01, 1.69712815e+00, 5.58626647e-03, 1.27255570e-02]
-# pdb.set_trace()
+    meteo_dates = meteo_dates[lower_cutoff:upper_cutoff]
 
-#TEMPORARY
-mean_feats = [5.39943134, 1.66547735e2, 2.91895336e2, 6.76191477, 7.37264141e1, 4.79885221e0, 1.83438590e-3, 2.29069199e-3]
-std_feats = [3.25563170, 8.53092316e1, 6.09606032e1, 1.27855354e1, 1.29500991e1, 1.69787946, 5.58071004e-3, 1.27507001e-2]
+
+    #read from file and filter dates
+    meteo = np.genfromtxt(base_path+'meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', usecols=(3,4,5,6,7,8,9), skip_header=1)
+    meteo = meteo[lower_cutoff:upper_cutoff,:]
+    means_per_lake[lake_ind,1:] = [meteo[:,a].mean() for a in range(n_features)]
+    var_per_lake[lake_ind,1:] = [meteo[:,a].std() ** 2 for a in range(n_features)]
+
+    glm_temps = pd.read_csv(base_path+'predictions/pb0_nhdhr_'+name+'_temperatures.csv')
+    glm_temps = glm_temps.values[:]
+    n_total_dates = glm_temps.shape[0]
+
+    #define depths from glm file
+    n_depths = glm_temps.shape[1]-1 #minus date 
+    max_depth = 0.5*(n_depths-1)
+    depths = np.arange(0, max_depth+0.5, 0.5)
+    depths_mean = depths.mean()
+    depths_var = depths.std() ** 2
+    means_per_lake[lake_ind, 0] = depths_mean
+    var_per_lake[lake_ind, 0] = depths_var
+
+mean_feats = np.average(means_per_lake, axis=0)   
+std_feats = np.average(var_per_lake ** (.5), axis=0)   
+print("mean feats: ", repr(mean_feats))
+print("std feats: ", repr(std_feats))
+assert mean_feats.shape[0] == 8
+assert std_feats.shape[0] == 8
+assert not np.isnan(np.sum(mean_feats))
+assert not np.isnan(np.sum(std_feats))
+
+# sys.exit()
+old_mean_feats =[5.35588822, 1.67022467e+02, 2.92219247e+02, 6.82630486e+00, 7.36783045e+01, 4.79831775e+00, 1.84282192e-03, 2.29087107e-03]
+old_std_feats = [3.23048181, 8.52233583e+01, 6.08592310e+01, 1.27621347e+01,1.29242034e+01, 1.69712815e+00, 5.58626647e-03, 1.27255570e-02]
+pdb.set_trace()
+
+# #TEMPORARY
+# mean_feats = [5.39943134, 1.66547735e2, 2.91895336e2, 6.76191477, 7.37264141e1, 4.79885221e0, 1.83438590e-3, 2.29069199e-3]
+# std_feats = [3.25563170, 8.53092316e1, 6.09606032e1, 1.27855354e1, 1.29500991e1, 1.69787946, 5.58071004e-3, 1.27507001e-2]
 
 
 #now preprocess every lakes data for modeling
