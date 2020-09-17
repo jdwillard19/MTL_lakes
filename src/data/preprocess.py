@@ -138,8 +138,8 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
     depths = np.arange(0, max_depth+0.5, 0.5)
     depths_normalized = np.divide(depths - mean_feats[0], std_feats[0])
 
-    ice_flags = pd.read_csv('../../data/raw/sb_pgdl_data_release/ice_flags/pb0_nhdhr_'+name+'_ice_flag.csv').values[:]
-    ice_flags_pt = pd.read_csv('../../data/raw/sb_pgdl_data_release/ice_flags/pb0_nhdhr_'+name+'_ice_flag.csv').values[:]
+    ice_flags = pd.read_csv(base_path+ 'ice_flags/pb0_nhdhr_'+name+'_ice_flag.csv').values[:]
+    ice_flags_pt = pd.read_csv(base_path + 'ice_flags/pb0_nhdhr_'+name+'_ice_flag.csv').values[:]
 
     #lower/uppur cutoff indices (to match observations)
     obs = pd.read_feather(base_path+'obs/nhdhr_'+name+"_obs.feather")
@@ -445,21 +445,21 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
     print("pre-training: ", first_pretrain_date, "->", last_pretrain_date, "(", n_pretrain, ")")
     print("training: ", first_train_date, "->", last_train_date, "(", n_trn, ")")
     print("testing: ", first_tst_date, "->", last_tst_date, "(", n_tst, ")")
-    if not os.path.exists("../../data/processed/lake_data/"+name): 
-        os.mkdir("../../data/processed/lake_data/"+name)
+    if not os.path.exists("../../data/processed/"+name): 
+        os.mkdir("../../data/processed/"+name)
     if not os.path.exists("../../models/"+name):
         os.mkdir("../../models/"+name)
-    feat_path_pt = "../../data/processed/lake_data/"+name+"/features_pt"
-    feat_path = "../../data/processed/lake_data/"+name+"/features"
-    norm_feat_path_pt = "../../data/processed/lake_data/"+name+"/processed_features_pt"
-    norm_feat_path = "../../data/processed/lake_data/"+name+"/processed_features"
-    glm_path_pt = "../../data/processed/lake_data/"+name+"/glm_pt"
-    glm_path = "../../data/processed/lake_data/"+name+"/glm"
-    trn_path = "../../data/processed/lake_data/"+name+"/train_b"
-    tst_path = "../../data/processed/lake_data/"+name+"/test_b"
-    full_path = "../../data/processed/lake_data/"+name+"/full"
-    dates_path = "../../data/processed/lake_data/"+name+"/dates"
-    dates_path_pt = "../../data/processed/lake_data/"+name+"/dates_pt"
+    feat_path_pt = "../../data/processed/"+name+"/features_pt"
+    feat_path = "../../data/processed/"+name+"/features"
+    norm_feat_path_pt = "../../data/processed/"+name+"/processed_features_pt"
+    norm_feat_path = "../../data/processed/"+name+"/processed_features"
+    glm_path_pt = "../../data/processed/"+name+"/glm_pt"
+    glm_path = "../../data/processed/"+name+"/glm"
+    trn_path = "../../data/processed/"+name+"/train"
+    tst_path = "../../data/processed/"+name+"/test"
+    full_path = "../../data/processed/"+name+"/full"
+    dates_path = "../../data/processed/"+name+"/dates"
+    dates_path_pt = "../../data/processed/"+name+"/dates_pt"
 
 
     np.save(feat_path, feat_mat)

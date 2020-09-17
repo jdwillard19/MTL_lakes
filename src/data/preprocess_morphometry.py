@@ -23,30 +23,10 @@ for nid in ids: #for each new additional lake
     csv.append("depths,areas")
     m = re.search('nhdhr_(.*)', nid) 
     name = m.group(1)
-    print(name)
 
-    #load nml file
-    f = open("../../../lake_modeling/data/raw/USGS_release/nhdhr_"+name+".nml","r")
-    txt = f.read()
+    hs = np.array(cfg[nid]['morphometry']['H'])
+    As = cfg[nid]['morphometry']['A']
 
-    #parse heights and areas
-    hs = re.findall('\s+H\s+=\s+(.+)',txt)
-    As = re.findall('\s+A\s+=\s+(.+)',txt)
-    assert len(hs) == 1
-    assert len(As) == 1
-
-    new_hs = cfg[nid]['morphometry']['H']
-    new_As = cfg[nid]['morphometry']['A']
-
-    #list2elem
-    hs = hs[0]
-    As = As[0]
-
-    #str2float
-    hs = np.array([float(i) for i in hs.split(",")])
-    As = np.array([float(i) for i in As.split(",")])
-
-    pdb.set_trace()
     #get into posi depth form
     hs = -(np.flip(hs,axis=0) - hs.max())
     As = np.flip(As,axis=0)
@@ -60,7 +40,7 @@ for nid in ids: #for each new additional lake
         csv.append(",".join([hs[i], As[i]]))
 
 
-    with open("../../../data/processed/lake_data/"+name+"/geometry",'w') as file:
+    with open("../../data/processed/lake_data/"+name+"/geometry",'w') as file:
         for line in csv:
             file.write(line)
             file.write('\n')
