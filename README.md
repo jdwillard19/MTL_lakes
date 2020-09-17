@@ -1,7 +1,33 @@
-lake_monitoring_project
+Meta Transfer Learning application for water temperature prediction of unmonitored lakes
 ==============================
 
-physics-guided neural network for lake temperature and related methods
+
+
+
+Steps to run MTL pipeline
+------------
+
+1. Install necessary dependencies from yml file (Anaconda must be installed for this), and activate conda environment
+`conda env create -f mtl_env.yml`
+`conda activate mtl_env`
+
+2. Pull raw data from Sciencebase
+`Rscript pull_data.r`
+
+
+3. Process zipped data, format for preprocessing with the following two scripts
+`cd src/data`
+`python process_zip_data.py`
+`python process_meteo_obs.py`
+
+4. Run main preprocessing script (still in src/data/ folder)
+`python preprocess.py`
+
+
+
+
+
+
 
 Project Organization
 ------------
@@ -10,11 +36,8 @@ Project Organization
     ├── README.md          <- The top-level README for developers using this project.
     ├── data
     │   ├── processed      <- The final, canonical data sets for modeling.
-    |       └──mendota.mat <- Lake mendota matlab dataset for observed data
-    |       └──mendota_sampled.mat <- lake mendota sampled output from GLM
     │   └── raw            <- The original, immutable data dump.
-    |       └──Mendota_hypsography.csv <- depth area information for lake |                                     mendota
-    │    │
+    |       └──sb_mtl_data_release <- contains all files downloaded from USGS data release
     ├── models             <- Trained and serialized models, model predictions, or model summaries
     │
     ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
