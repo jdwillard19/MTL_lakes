@@ -16,6 +16,8 @@ cfg = json.load(cfg_f)
 ct = 0
 
 for nid in ids: #for each new additional lake
+    ct += 1
+    print("processing lake ",ct,": ",nid)
     i_d = nid
     nid = 'nhdhr_'+nid
 
