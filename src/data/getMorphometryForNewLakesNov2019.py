@@ -9,8 +9,8 @@ ids = pd.read_feather("../../metadata/lake_metadata.feather")
 cfg_path = "../../data/raw/sb_mtl_data_release/pb0_config.json"
 ids = ids['site_id'].values
 
-
-cfg = json.load(cfg_path)
+cfg_f = open(cfg_path)
+cfg = json.load(cfg_f)
 
 ct = 0
 
