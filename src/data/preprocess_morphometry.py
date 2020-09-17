@@ -35,8 +35,8 @@ for nid in ids: #for each new additional lake
     assert len(hs) == 1
     assert len(As) == 1
 
-    new_hs = cfg['nhdhr_91692315']['morphometry']['H']
-    new_As = cfg['nhdhr_91692315']['morphometry']['H']
+    new_hs = cfg[nid]['morphometry']['H']
+    new_As = cfg[nid]['morphometry']['A']
 
     #list2elem
     hs = hs[0]
