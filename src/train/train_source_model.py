@@ -79,10 +79,9 @@ n_features = 8  #number of physical drivers
 win_shift = 175 #how much to slide the window on training set each time
 save = True 
 
-lake_ind = -1
 
 lakename = site_id
-print("lake "+str(lake_ind)+": "+lakename)
+print("lake: "+lakename)
 data_dir = "../../data/processed/"+lakename+"/"
 
 ###############################
