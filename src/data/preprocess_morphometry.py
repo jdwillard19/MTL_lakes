@@ -6,9 +6,10 @@ import pdb
 ######################################################################################
 # (Jared - Sept 2020) parse morphometry from USGS data release into geometry files for PGDL
 ####################################################################################
-ids = pd.read_feather("../../metadata/lake_metadata.feather")
 cfg_path = "../../data/raw/sb_mtl_data_release/cfg/pb0_config.json"
-ids = ids['site_id'].values
+obs_df = pd.read_csv(base_path+"obs/temperature_observations.csv")
+ids = np.unique(obs_df['site_id'].values)
+ids = np.array([re.search('nhdhr_(.*)', x).group(1) for x in ids])
 
 cfg_f = open(cfg_path)
 cfg = json.load(cfg_f)
