@@ -10,8 +10,9 @@ cfg_path = "../../data/raw/sb_mtl_data_release/pb0_config.json"
 ids = ids['site_id'].values
 
 
+cfg = json.load(cfg_path)
+
 ct = 0
-cfg = json.loads(jsondata)
 
 for nid in ids: #for each new additional lake
     i_d = nid
@@ -33,7 +34,6 @@ for nid in ids: #for each new additional lake
     assert len(hs) == 1
     assert len(As) == 1
 
-    cfg = json.load(cfg_path)
     pdb.set_trace()
     #list2elem
     hs = hs[0]
