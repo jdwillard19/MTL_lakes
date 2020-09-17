@@ -138,8 +138,8 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
     depths = np.arange(0, max_depth+0.5, 0.5)
     depths_normalized = np.divide(depths - mean_feats[0], std_feats[0])
 
-    ice_flags = pd.read_csv(base_path+ 'ice_flags/pb0_nhdhr_'+name+'_ice_flag.csv').values[:]
-    ice_flags_pt = pd.read_csv(base_path + 'ice_flags/pb0_nhdhr_'+name+'_ice_flag.csv').values[:]
+    ice_flags = pd.read_csv(base_path+ 'ice_flags/pb0_nhdhr_'+name+'_ice_flags.csv').values[:]
+    ice_flags_pt = pd.read_csv(base_path + 'ice_flags/pb0_nhdhr_'+name+'_ice_flags.csv').values[:]
 
     #lower/uppur cutoff indices (to match observations)
     obs = pd.read_feather(base_path+'obs/nhdhr_'+name+"_obs.feather")
