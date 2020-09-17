@@ -338,8 +338,9 @@ def buildLakeDataForRNN_manylakes_finetune2(lakename, data_dir, seq_length, n_fe
     hyps = []
     my_path = os.path.abspath(os.path.dirname(__file__))
     if os.path.exists(os.path.join(my_path, hyps_dir)):
-        hyps = getHypsographyManyLakes(hyps_dir, lakename, depth_values)
+        pdb.set_trace()
 
+        hyps = getHypsographyManyLakes(hyps_dir, lakename, depth_values)
 
 
     assert np.isfinite(X_all[:,:,:-1]).all(), "X_all has nan"
