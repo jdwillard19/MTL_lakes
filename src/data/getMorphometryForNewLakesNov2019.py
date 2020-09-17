@@ -5,7 +5,7 @@ import json
 ######################################################################################
 # (Jared - Sept 2020) parse morphometry from USGS data release into geometry files for PGDL
 ####################################################################################
-ids = pd.read_csv("../../metadata/lake_metadata.feather")
+ids = pd.read_feather("../../metadata/lake_metadata.feather")
 cfg_path = "../../data/raw/sb_mtl_data_release/pb0_config.json"
 ids = ids['site_id'].values
 
