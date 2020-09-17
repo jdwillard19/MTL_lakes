@@ -441,8 +441,8 @@ data_dir = "../../data/processed/"+lakename+"/"
 
 #paths to save
 
-pretrain_path = "../../../models/"+lakename+"/pretrain_source_model"
-save_path = "../../../models/"+lakename+"/PGRNN_source_model_0.7"
+pretrain_path = "../../models/"+lakename+"/pretrain_source_model"
+save_path = "../../models/"+lakename+"/PGRNN_source_model_0.7"
 
 
 ###############################
