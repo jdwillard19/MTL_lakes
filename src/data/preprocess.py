@@ -440,7 +440,7 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
         d_str = ", and "+str(obs_d) + " observations outside of combined date range of meteorological and GLM output"
     # if obs_g > 0 or obs_d > 0:
         # continue
-    print("lake " + str(ct) + ",  id: " + name + ": " + str(obs_g) + "/" + str(n_obs) + " observations greater than max depth " + str(max_depth) + d_str)
+    print("lake " + str(it_ct) + ",  id: " + name + ": " + str(obs_g) + "/" + str(n_obs) + " observations greater than max depth " + str(max_depth) + d_str)
     #write features and labels to processed data
     print("pre-training: ", first_pretrain_date, "->", last_pretrain_date, "(", n_pretrain, ")")
     print("training: ", first_train_date, "->", last_train_date, "(", n_trn, ")")
