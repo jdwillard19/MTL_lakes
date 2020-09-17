@@ -21,8 +21,7 @@ from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, par
 
 
 #read lake metadata file to get all the lakenames
-# metadata = pd.read_feather("../../../metadata/lake_metadata_wNew2.csv")
-meta_new = pd.read_feather("../../../metadata/lake_metadata_wNew2.feather")
+meta_new = pd.read_feather("../../metadata/lake_metadata.feather")
 metadata = meta_new
 ids = pd.read_csv('../../../metadata/pball_site_ids.csv', header=None)
 
