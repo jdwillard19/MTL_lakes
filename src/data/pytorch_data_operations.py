@@ -337,6 +337,8 @@ def buildLakeDataForRNN_manylakes_finetune2(lakename, data_dir, seq_length, n_fe
     hyps_dir = data_dir + "geometry" #hypsography file
     hyps = []
     my_path = os.path.abspath(os.path.dirname(__file__))
+    pdb.set_trace()
+
     if os.path.exists(os.path.join(my_path, hyps_dir)):
         pdb.set_trace()
 
