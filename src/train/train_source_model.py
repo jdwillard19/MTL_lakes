@@ -50,7 +50,7 @@ site_id = sys.argv[1]
 debug_train = False
 debug_end = False
 verbose = False
-pretrain = True
+pretrain = False
 save = True
 save_pretrain = True
 
