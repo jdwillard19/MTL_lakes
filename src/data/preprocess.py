@@ -16,8 +16,9 @@ import datetime
 
 #inital data load, site ids
 base_path = "../../data/raw/sb_mtl_data_release/"
+obs_df = pd.read_csv(base_path+"obs/temperature_observations.csv")
 metadata = pd.read_feather("../../metadata/lake_metadata.feather")
-ids = metadata['site_id'].values
+ids = np.unique(obs_df['site_id'].values)
 n_features = 7
 
 n_lakes = ids.shape[0]
