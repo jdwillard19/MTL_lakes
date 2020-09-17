@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import re
 import json
+import pdb
 ######################################################################################
 # (Jared - Sept 2020) parse morphometry from USGS data release into geometry files for PGDL
 ####################################################################################
