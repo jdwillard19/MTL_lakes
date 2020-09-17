@@ -20,8 +20,9 @@ Steps to run MTL pipeline
 `python process_zip_data.py`
 `python process_meteo_obs.py`
 
-4. Run main preprocessing script (still in src/data/ folder)
+4. Run main preprocessing script (still in src/data/ folder) and also grab morphometry from config files
 `python preprocess.py`
+`python preprocess_morphometry.py`
 
 
 
@@ -40,20 +41,18 @@ Project Organization
     |       └──sb_mtl_data_release <- contains all files downloaded from USGS data release
     ├── models             <- Trained and serialized models, model predictions, or model summaries
     │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-    │
-    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc. |                         (currently unused)
-    │   └── figures        <- Generated graphics and figures to be used in reporting(currently unused)
-    │
-    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-    │                         generated with `pip freeze > requirements.txt`
     │
     ├── src                <- Source code for use in this project.
     │   ├── __init__.py    <- Makes src a Python module
     │   │
     │   ├── data           <- Scripts to download, preprocess, or operate on data
-    │   │   └── preprocess.py
-    │   │   └── make_dataset.py
+            |
+            ├── pull_data.r <- Pull raw data from Sciencebase
+            ├── process_zip_data.py <- process zipped Sciencebase data
+            ├── process_meteo_obs.py <- create lake-specific meteo and obs files
+            ├── preprocess.py <- main preprocessing script
+            └── preprocess_morphometry.py <- parse lake geometries for modeling
+    
     │   │
     │   │
     │   ├── models         <- Scripts to train models and then use trained models to make
@@ -63,19 +62,7 @@ Project Organization
     |           └──ec_experiment.py <- initial energy conservation experiment
     │   │   └── predict_model.py
     │   │
-    │   └──scripts
-    |       |
-    |       └──experiments <- code for experiments
-    |           |
-    |           └──ec_experiment.py <- initial energy conservation experiment
-    |       └──exploratory <- sandbox where I try out new things
-    |       └──one-off     <- scripts for persistant data operations
-    |           |
-    |           └──createDepthAreaData.py <- adds hypsography data to dataset
-    |           └──createDepthAreaPercentData.py <- addspercentage hypsography data
-    |           └──interpolateXcDoyDepthDatenum.py <- interpolates data missing at lower depths so we have even sequences per depth
-    |           └──RNN_preprocess.py <- necessary to run any of the data operations to build any sequence datasets for RNN
-    |           └──unstandardizeXcDoy.py <- reverts features to pre-standardization values and adds to dataset
+    └──
 
 
 --------

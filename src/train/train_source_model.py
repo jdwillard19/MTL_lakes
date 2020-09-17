@@ -14,25 +14,27 @@ import math
 import sys
 import os
 sys.path.append('../../data')
+sys.path.append('../data')
 sys.path.append('../../models')
-sys.path.append('/home/invyz/workspace/Research/lake_monitoring/src/data')
+sys.path.append('../models')
 # from data_operations import calculatePhysicalLossDensityDepth
-from pytorch_data_operations import buildLakeDataForRNNPretrain, calculate_energy,calculate_ec_loss_manylakes, transformTempToDensity, calculate_dc_loss
+from pytorch_data_operations import buildLakeDataForRNNPretrain, calculate_ec_loss_manylakes, calculate_dc_loss
 from pytorch_model_operations import saveModel
 import pytorch_data_operations
-from io_operations import makeLabels, averageTrialsToFinalOutputFullData, saveFeatherFullDataWithEnergy
 import datetime
-#multiple dataloader wrapping?
 import pdb
 from torch.utils.data import DataLoader
-from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs, preprocessForTargetLake
+from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
+
+
+
 #script start
 currentDT = datetime.datetime.now()
 print(str(currentDT))
 
 
 ####################################################3
-#  source model script, takes lakename as required command line argument
+# (Sept 2020 - Jared) source model script, takes lakename as required command line argument
 ###################################################33
 
 #enable/disable cuda 
@@ -40,6 +42,7 @@ use_gpu = True
 torch.backends.cudnn.benchmark = True
 torch.set_printoptions(precision=10)
 
+#cmd args
 site_id = sys.argv[1]
 
 
@@ -51,11 +54,10 @@ pretrain = True
 save = True
 save_pretrain = True
 
-
+#RMSE threshold for pretraining
 rmse_threshold = .7
-#############################################################
-#training loop
-####################################################################
+
+
 
 #####################3
 #params
@@ -81,7 +83,7 @@ lake_ind = -1
 
 lakename = site_id
 print("lake "+str(lake_ind)+": "+lakename)
-data_dir = "../../data/processed/lake_data/"+lakename+"/"
+data_dir = "../../data/processed/"+lakename+"/"
 
 ###############################
 # data preprocess
@@ -93,8 +95,6 @@ hypsography) = buildLakeDataForRNNPretrain(lakename, data_dir, seq_length, n_fea
                                    excludeTest=False, normAll=False, normGE10=False)
 
 n_depths = torch.unique(all_data[:,:,0]).size()[0]
-# if verbose:
-    # print("n depths: ", n_depths)
 
 ####################
 #model params
@@ -222,12 +222,12 @@ if use_gpu:
 
 #define training loss function and optimizer
 mse_criterion = nn.MSELoss()
-optimizer = optim.Adam(lstm_net.parameters(), lr=.005)#, weight_decay=0.01)
+optimizer = optim.Adam(lstm_net.parameters(), lr=.005)
 
 #paths to save
-if not os.path.exists("../../../models/single_lake_models/"+lakename):
-    os.mkdir("../../../models/single_lake_models/"+lakename)
-save_path = "../../../models/single_lake_models/"+lakename+"/pretrain_source_model"
+if not os.path.exists("../../models/"+lakename):
+    os.mkdir("../../models/"+lakename)
+save_path = "../../models/"+lakename+"/pretrain_source_model"
 
 min_loss = 99999
 min_mse_tsterr = None
@@ -240,6 +240,10 @@ manualSeed = [random.randint(1, 99999999) for i in range(pretrain_epochs)]
 eps_converged = 0
 eps_till_converge = 10
 converged = False
+
+#############################################################
+#pre- training loop
+####################################################################
 if pretrain:
     for epoch in range(pretrain_epochs):
         if verbose:
@@ -436,8 +440,8 @@ data_dir = "../../data/processed/lake_data/"+lakename+"/"
 
 #paths to save
 
-pretrain_path = "../../../models/single_lake_models/"+lakename+"/pretrain_source_model"
-save_path = "../../../models/single_lake_models/"+lakename+"/PGRNN_source_model_0.7"
+pretrain_path = "../../../models/"+lakename+"/pretrain_source_model"
+save_path = "../../../models/"+lakename+"/PGRNN_source_model_0.7"
 
 
 ###############################
@@ -453,16 +457,7 @@ u_depths = np.unique(tst_data[:,0,0])
 
 trn_data = tst_data
 batch_size = trn_data.size()[0]
-####################
-#model params (inherited from pre-training)
-########################
-# n_hidden = 8 #number of hidden units in LSTM
-# batch_size = 600
-# yhat_batch_size = n_depths*1
-# grad_clip = 1.0 #how much to clip the gradient 2-norm in training
-# lambda1 = 0.00 #magnitude hyperparameter of l1 loss
-# ec_lambda = 0.0 #magnitude hyperparameter of ec loss
-# ec_threshold = 36 #anything above this far off of energy budget closing is penalized
+
 
 
 #Dataset classes
