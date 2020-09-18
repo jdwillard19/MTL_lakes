@@ -120,14 +120,7 @@ for target_id in lakenames:
 
     print("targetLake"+str(ct)+": "+target_id)
 
-    #geometry difference metric for each source lake of a target
-    # output_f = None
-    # if os.path.exists("../../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic_pball"):
-    #     output_f = pd.read_csv("../../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic_pball")
-
-    # lakenames_new = np.setdiff1d(np.setdiff1d(lakenames, output_f.source_id), target_id)
-    # if len(lakenames_new) == 0:
-        # continue
+    #for each source lake, run on target lake and record result
     for source_id in lakenames_new:
         nid = source_id
 
@@ -144,19 +137,19 @@ for target_id in lakenames:
         output_mats[:] = np.nan
         label_mats[:] = np.nan
         #save output path
-        save_output_path = "../../../results/transfer_learning/target_"+target_id+"/source_"+source_id+"/PGRNN_basic_pball"
-        save_label_path = "../../../results/transfer_learning/target_"+target_id+"/label"
+        save_output_path = "../../results/transfer_learning/target_"+target_id+"/source_"+source_id+"/PGRNN_basic_pball"
+        save_label_path = "../../results/transfer_learning/target_"+target_id+"/label"
 
-        if not os.path.exists("../../../results/transfer_learning/target_"+target_id+"/"):
-            os.mkdir("../../../results/transfer_learning/target_"+target_id)
+        if not os.path.exists("../../results/transfer_learning/target_"+target_id+"/"):
+            os.mkdir("../../results/transfer_learning/target_"+target_id)
 
-        if not os.path.exists("../../../results/transfer_learning/target_"+target_id+"/source_"+source_id):
-            os.mkdir("../../../results/transfer_learning/target_"+target_id+"/source_"+source_id)
+        if not os.path.exists("../../results/transfer_learning/target_"+target_id+"/source_"+source_id):
+            os.mkdir("../../results/transfer_learning/target_"+target_id+"/source_"+source_id)
 
 
 
         #load model
-        load_path = "../../../models/single_lake_models/"+source_id+"/PGRNN_source_model"
+        load_path = "../../models/"+source_id+"/PGRNN_source_model_0.7"
         n_hidden = torch.load(load_path)['state_dict']['out.weight'].shape[1]
         lstm_net = LSTM(n_features, n_hidden, batch_size)
         if use_gpu:
@@ -247,14 +240,14 @@ for target_id in lakenames:
 
 
 
-    # with open("../../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic_pball",'a') as file:
-    #     # print("saving to ../../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic6")
-    #     for line in csv_targ:
-    #         file.write(line)
-    #         file.write('\n')
+    with open("../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic_pball",'a') as file:
+        # print("saving to ../../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic6")
+        for line in csv_targ:
+            file.write(line)
+            file.write('\n')
     
 
-with open("../../../results/transfer_learning/resultsAllTrain_pball.csv",'a') as file2:
+with open("../../results/transfer_learning/resultsAllTrain_pball.csv",'a') as file2:
   for line2 in csv_all:
       file2.write(line2)
       file2.write('\n')
