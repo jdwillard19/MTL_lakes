@@ -46,7 +46,6 @@ win_shift = 175
 begin_loss_ind = 0
 
 
-train_lakes = np.array(train_lakes)
 
 #run params
 save = True
@@ -55,7 +54,7 @@ ct = 0
 #############################################3
 ##for every target lake, load every source lake and predict
 #########################################################3
-for target_id in train_lakes: 
+for ctt, target_id in enumerate(train_lakes): 
     nid = target_id
     # if nid == '120018008' or nid == '120020307' or nid == '120020636' or nid == '32671150' or nid =='58125241'or nid=='120020800' or nid=='91598525':
     #     continue
@@ -119,15 +118,15 @@ for target_id in train_lakes:
             return x, hidden
 
     print("targetLake"+str(ct)+": "+target_id)
-
+    all_but_target = [x for x in train_lakes if x != target_id]
     #for each source lake, run on target lake and record result
-    for source_id in lakenames_new:
+    for cts, source_id in enumerate(all_but_target):
         nid = source_id
 
         if source_id == target_id:
             continue
 
-        print("source lake "+source_id)
+        print("target_lake "+ctt+"/"+len(train_lakes)+" || source lake "+ cts + "/" + len(all_but_target)+": "+source_id)
 
 
         #output matrix
