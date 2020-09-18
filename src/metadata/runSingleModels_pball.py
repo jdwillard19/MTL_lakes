@@ -46,7 +46,7 @@ win_shift = 175
 begin_loss_ind = 0
 
 
-# train_lakes = np.array(lakenames)
+train_lakes = np.array(train_lakes)
 
 #run params
 save = True
@@ -55,7 +55,7 @@ ct = 0
 #############################################3
 ##for every target lake, load every source lake and predict
 #########################################################3
-for target_id in lakenames: 
+for target_id in train_lakes: 
     nid = target_id
     # if nid == '120018008' or nid == '120020307' or nid == '120020636' or nid == '32671150' or nid =='58125241'or nid=='120020800' or nid=='91598525':
     #     continue
