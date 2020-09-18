@@ -513,7 +513,7 @@ for lakename in lakes:
     hypsography) = buildLakeDataForRNN_manylakes_finetune2(lakename, data_dir, seq_length, n_features,
                                        win_shift = win_shift, begin_loss_ind = begin_loss_ind, 
                                        latter_third_test=True, outputFullTestMatrix=True, 
-                                       sparseTen=False, realization='none', allTestSeq=True, oldFeat=False, normGE10=False) 
+                                       allTestSeq=True, oldFeat=False, normGE10=False) 
     n_depths = torch.unique(all_data[:,:,0]).size()[0]
     u_depths = np.unique(tst_data[:,0,0])
 
