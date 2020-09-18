@@ -23,12 +23,11 @@ from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, par
 #read lake metadata file to get all the lakenames
 meta_new = pd.read_feather("../../metadata/lake_metadata.feather")
 metadata = meta_new
-ids = pd.read_csv('../../../metadata/pball_site_ids.csv', header=None)
+ids = pd.read_csv('../../metadata/pball_site_ids.csv', header=None)
 
 target_lakes = [str(i) for i in ids.values.flatten()] # to loop through all lakes
 source_lakes = [str(i) for i in ids.values.flatten()] # to loop through all lakes
 glm_all_f = pd.read_csv("../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
-train_df = pd.read_feather("../../results/transfer_learning/glm/train_rmses_pball.feather")
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
 metadata.set_index("nhd_id", inplace=True)
 # meta_new.set_index("nhd_id", inplace=True)
@@ -44,25 +43,13 @@ n_features = 8
 # n_hidden = 20
 seq_length = 350
 win_shift = 175
-begin_loss_ind = 175
+begin_loss_ind = 0
 
-#define train and test lakes
-# test_lakes = np.array(['1102088', '1101506', '13631637', '1099476', '120053694', '9022741', '1101864'])
-# test_lakes = np.array(['13293262', '1097324', '1109052', '1109136', '1099420', '1099432', '1099450', '1099432'])
 
 train_lakes = np.array(lakenames)
-# train_lakes = np.delete(lakenames, test_lakes)
 
 #run params
 save = True
-
-
-
-
-
-
-
-
 ct = 0
 
 #############################################3
@@ -74,14 +61,14 @@ for target_id in lakenames:
     #     continue
     ct += 1
 
-    data_dir_target = "../../data/processed/lake_data/"+target_id+"/" 
+    data_dir_target = "../../data/processed/"+target_id+"/" 
 
 
     (_, _, tst_data_target, tst_dates_target, unique_tst_dates_target, all_data_target, all_phys_data_target, all_dates_target,
     hypsography_target) = buildLakeDataForRNN_manylakes_finetune2(target_id, data_dir_target, seq_length, n_features,
                                        win_shift = win_shift, begin_loss_ind = begin_loss_ind, 
                                        latter_third_test=True, outputFullTestMatrix=True, 
-                                       sparseTen=False, realization='none', allTestSeq=True, oldFeat=False, postProcessSplits=False)
+                                       allTestSeq=True, oldFeat=False, postProcessSplits=False)
 
 
     #           row_vals = [source_id, mat_rmse, geo_diff, tempdtw_diff, surf_area_diff, max_depth_diff, lat_diff, long_diff, clar_diff,

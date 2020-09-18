@@ -17,9 +17,8 @@ from scipy import interpolate
 def buildLakeDataForRNN_manylakes_finetune2(lakename, data_dir, seq_length, n_features, \
                                             win_shift= 1, begin_loss_ind = 100, \
                                             test_seq_per_depth=1,latter_third_test=True, \
-                                            outputFullTestMatrix=False, sparseTen=False, sparseCustom=None, \
-                                            sparse50=False, sparse100=False, realization=0, allTestSeq=False, \
-                                            targetLake = None, includeMetadata=False, \
+                                            outputFullTestMatrix=False, sparseCustom=None, \
+                                            allTestSeq=False, \
                                             oldFeat = False, normGE10=False, postProcessSplits=True, randomSeed=0):
 
     #NONAN
