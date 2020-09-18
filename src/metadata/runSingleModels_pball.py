@@ -16,7 +16,6 @@ import sys
 import os
 sys.path.append('../../data')
 sys.path.append('../../models')
-from io_operations import saveTemperatureMatrix
 from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
 
 
