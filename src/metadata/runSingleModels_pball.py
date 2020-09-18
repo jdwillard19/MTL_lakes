@@ -46,7 +46,7 @@ win_shift = 175
 begin_loss_ind = 0
 
 
-train_lakes = np.array(lakenames)
+# train_lakes = np.array(lakenames)
 
 #run params
 save = True
