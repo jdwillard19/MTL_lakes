@@ -30,7 +30,6 @@ def buildLakeDataForRNN_manylakes_finetune2(lakename, data_dir, seq_length, n_fe
         #@begin_loss_ind = index in sequence to begin calculating loss function (to avoid poor accuracy in early parts of the sequence)
     #load data created in preprocess.py based on lakename
     debug = False
-    realization = str(realization)
     my_path = os.path.abspath(os.path.dirname(__file__))
 
     feat_mat_raw = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/features.npy"))
