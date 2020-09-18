@@ -126,7 +126,7 @@ for ctt, target_id in enumerate(train_lakes):
         if source_id == target_id:
             continue
 
-        print("target_lake "+ctt+"/"+len(train_lakes)+" || source lake "+ cts + "/" + len(all_but_target)+": "+source_id)
+        print("target_lake "+str(ctt)+"/"+str(len(train_lakes))+" || source lake "+ str(cts) + "/" + str(len(all_but_target))+": "+source_id)
 
 
         #output matrix
