@@ -14,8 +14,8 @@ import random
 import math
 import sys
 import os
-sys.path.append('../../data')
-sys.path.append('../../models')
+sys.path.append('../data')
+sys.path.append('../models')
 from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
 
 
