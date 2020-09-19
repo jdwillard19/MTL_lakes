@@ -67,7 +67,7 @@ for i, lake in enumerate(ids):
       print("lat: ",lat)
       print("sdf: ",)
 
-    meteo = pd.read_csv("../../data/raw/sb_mtl_data_release/meteo/"+lake+".csv")
+    meteo = pd.read_csv("../../data/raw/sb_mtl_data_release/meteo/"+lake+"_meteo.csv")
 
     dates = [pd.Timestamp(t).to_pydatetime() for t in meteo['time']]
     n_dates_meteo = len(dates)
