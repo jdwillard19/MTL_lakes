@@ -3,9 +3,7 @@ import numpy as np
 import os
 import pdb
 
-metadata2 = pd.read_feather("../../../metadata/lake_metadata_baseJune2020.feather")
-metadata = pd.read_feather("../../../metadata/lake_metadata_2700plusWithNewGLM.feather")
-pdb.set_trace()
+metadata = pd.read_feather("../../metadata/lake_metadata.feather")
 meta = metadata
 sites = pd.read_csv('../../../metadata/sites_moreThan10ProfilesWithGLM_June2020Update.csv')
 
