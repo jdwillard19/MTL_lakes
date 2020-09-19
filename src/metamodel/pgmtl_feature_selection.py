@@ -29,8 +29,7 @@ for _, lake_id in enumerate(train_lakes):
 	new_df = pd.DataFrame()
 
 	#get performance results (metatargets), filter out target as source
-	lake_df_res = pd.read_csv("../../results/transfer_learning/target_"+lake_id+"/resultsPGRNNbasic_pball") 
-	pdb.set_trace()
+	lake_df_res = pd.read_csv("../../results/transfer_learning/target_"+lake_id+"/resultsPGRNNbasic_pball",header=None,names=['source_id','rmse'])
 	lake_df_res = lake_df_res[lake_df_res.source_id != 'source_id']
 
 	#get metadata differences between target and all the sources
