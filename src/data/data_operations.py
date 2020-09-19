@@ -13,6 +13,7 @@ import pdb
 #this file contains useful functions for transforming data and also useful calculations, sorted alphabetically
 
 def rmse(predictions, targets):
+    pdb.set_trace()
     if np.isnan(np.array(((predictions - targets)) ** 2)).all():
         return np.nan
     else:
