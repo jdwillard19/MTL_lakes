@@ -201,7 +201,7 @@ for i, lake in enumerate(ids):
     skew_obs_temp = skew(obs['temp'])
     kurt_obs_temp = kurtosis(obs['temp'])
 
-
+    pdb.set_trace()
     #calculate glm error
     ind_to_del = []
     ind_to_del_full = []
