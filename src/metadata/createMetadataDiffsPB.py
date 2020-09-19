@@ -30,7 +30,6 @@ for ct, i_d in enumerate(ids):
 	glm_res = glm_all_f[glm_all_f['target_id'] == 'nhdhr_'+i_d]
 
 	#merge files
-	pdb.set_trace()
-	merged_inner = pd.merge(left=glm_res, right=diffs, left_on='source_id', right_on='site_id2')
+	merged_inner = pd.merge(left=glm_res, right=diffs, left_on='source_id', right_on='site_id')
 	new_df = pd.concat([new_df, merged_inner], ignore_index=True)
 new_df.reset_index().to_feather("../../results/glm_transfer/glm_meta_train_data.feather")
