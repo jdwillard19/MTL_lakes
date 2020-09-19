@@ -98,21 +98,19 @@ for i, lake in enumerate(ids):
 
     #stratification indices
 
-    lathrop = 1 if ((max_depth - 0.1) / np.log10(surf_area)) > 3.8 else 0
+    lathrop = 1 if ((max_depth - 0.1) / np.log10(surf_area/1e4)) > 3.8 else 0
 
-    glm = pd.read_csv("../../data/raw/sb_mtl_data_release/predictions/pb0_"+name+"_temperatures.csv")
-    glm_no_date = glm.drop('date',axis=1)
-    diffs = np.array([ row.values[-9] - row.values[0] if len(row) > 8 and math.isnan(row.values[-8]) and not isinstance(row.values[-9], str)
-                       else (row.values[-8] - row.values[0]) if len(row) > 7 and math.isnan(row.values[-7]) and not isinstance(row.values[-8], str) 
-                       else (row.values[-7] - row.values[0]) if len(row) > 6 and math.isnan(row.values[-6]) and not isinstance(row.values[-7], str) \
-                       else (row.values[-6] - row.values[0]) if len(row) > 5 and math.isnan(row.values[-5]) and not isinstance(row.values[-6], str)\
-                       else (row.values[-5] - row.values[0]) if len(row) > 4 and math.isnan(row.values[-4]) and not isinstance(row.values[-5], str)\
-                       else (row.values[-4] - row.values[0]) if len(row) > 3 and math.isnan(row.values[-3]) and not isinstance(row.values[-4], str)\
-                       else (row.values[-3] - row.values[0]) if len(row) > 2 and math.isnan(row.values[-2]) and not isinstance(row.values[-3], str)\
-                       else (row.values[-2] - row.values[0]) if len(row) > 1 and math.isnan(row.values[-1]) and not isinstance(row.values[-2], str)\
-                       else 0 for ind, row in glm_no_date.iterrows()])
-    assert np.where(~np.isfinite(diffs))[0].shape[0] == 0
-    glm_strat_perc = np.sum(np.abs(diffs) > 1) / diffs.shape[0]
+    glm = pd.read_csv("../../../data/raw/sb_pgdl_data_release/predictions/pb0_nhdhr_"+name+"_temperatures.csv")
+    first_col = glm.pop('date')
+    glm.insert(0, 'date', first_col)
+
+    top_temps = glm.values[:,1]
+    bottom_temps = [row[1].iloc[np.where(np.isfinite(np.array(row[1].iloc[1:].values,dtype=np.float32)))[0][-1]+1] for row in glm.iterrows()]
+
+
+    glm_strat_perc = np.sum(np.abs(top_temps - bottom_temps) > 1) / top_temps.shape[0]
+    print("lathrop: ",lathrop," --- sperc: ", glm_strat_perc)
+    #.1899, .1541,.5367,.20398
 
     #45(?) day average of all wind speeds after the date of the air temperature 0 estimate
     ws_ind0 = subzero_ind
