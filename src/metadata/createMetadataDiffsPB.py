@@ -21,7 +21,7 @@ for ct, i_d in enumerate(ids):
 	#for each target id
 	print(ct, ": ", i_d)
 	try:
-		diffs = pd.read_feather("../../metadata/diff/target_"+ i_d +"_pball_Aug2020.feather")
+		diffs = pd.read_feather("../../metadata/diffs/target_"+ i_d +".feather")
 	except:
 		inc.append(i_d)
 		continue
@@ -31,7 +31,7 @@ for ct, i_d in enumerate(ids):
 	glm_res = glm_all_f[glm_all_f['target_id'] == 'nhdhr_'+i_d]
 
 	#merge files
+	pdb.set_trace()
 	merged_inner = pd.merge(left=glm_res, right=diffs, left_on='source_id', right_on='site_id2')
 	new_df = pd.concat([new_df, merged_inner], ignore_index=True)
-pdb.set_trace()
 new_df.reset_index().to_feather("../../results/glm_transfer/glm_meta_train_data.feather")
