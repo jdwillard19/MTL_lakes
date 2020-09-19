@@ -21,7 +21,7 @@ metadata = pd.read_feather("../../metadata/lake_metadata.feather")
 ids = np.unique(all_obs['site_id'].values)
 days_per_year = 366
 usgs_meta = pd.read_csv("../../metadata/lake_metadata_from_data_release.csv")
-
+verbose = True
 
 new_lab = ['site_id', 'K_d', 'SDF', 'canopy', 'fullname', 'glm_uncal_rmse_third', 'glm_uncal_rmse_full',
        'latitude', 'longitude', 'max_depth', 'surface_area', 'sw_mean',
@@ -53,19 +53,22 @@ for i, lake in enumerate(ids):
     #     continue
 
     pdb.set_trace()
-    surf_area = float(re.search('A\s*=.*,\s*(\d+(\.\d+)?).*&time', nml_data).group(1))
-    max_depth = float(re.search('lake_depth\s*=\s*(\d+(\.\d+)?)', nml_data).group(1))
-    k_d = float(re.search('Kw\s*=\s*(\d+(\.\d+)?)', nml_data).group(1))
-    lon = usgs_meta[usgs_meta['site_id'] == 'nhdhr_'+lake].centroid_lon.values[0]
-    lat = usgs_meta[usgs_meta['site_id'] == 'nhdhr_'+lake].centroid_lat.values[0]
-    sdf = usgs_meta[usgs_meta['site_id'] == 'nhdhr_'+lake].SDF.values[0]
-    fullname = usgs_meta[usgs_meta['site_id'] == 'nhdhr_'+lake].lake_name.values[0]
-    # print("surf area ", surf_area)
-    # print("max d ", max_depth)
-    # print("kd ", k_d)
+    surf_area = usgs_meta[usgs_meta['site_id']==lake]['surface_area'].values[0]
+    max_depth = usgs_meta[usgs_meta['site_id']==lake]['max_depth'].values[0]
+    k_d = usgs_meta[usgs_meta['site_id']==lake]['K_d'].values[0]
+    lon = usgs_meta[usgs_meta['site_id'] == lake].centroid_lon.values[0]
+    lat = usgs_meta[usgs_meta['site_id'] == lake].centroid_lat.values[0]
+    sdf = usgs_meta[usgs_meta['site_id'] == lake].SDF.values[0]
+    fullname = usgs_meta[usgs_meta['site_id'] == lake].lake_name.values[0]
+    if verbose:
+      print("surf area ", surf_area)
+      print("max d ", max_depth)
+      print("kd ", k_d)
+      print("lon: ",lon)
+      print("lat: ",lat)
+      print("sdf: ",)
 
-
-    meteo = pd.read_csv("../../data/raw/sb_pgdl_data_release/meteo/nhdhr_"+lake+".csv")
+    meteo = pd.read_csv("../../data/raw/sb_mtl_data_release/meteo/"+lake+".csv")
 
     dates = [pd.Timestamp(t).to_pydatetime() for t in meteo['time']]
     n_dates_meteo = len(dates)
@@ -97,7 +100,7 @@ for i, lake in enumerate(ids):
 
     lathrop = 1 if ((max_depth - 0.1) / np.log10(surf_area)) > 3.8 else 0
 
-    glm = pd.read_csv("../../data/raw/sb_pgdl_data_release/predictions/pb0_nhdhr_"+name+"_temperatures.csv")
+    glm = pd.read_csv("../../data/raw/sb_mtl_data_release/predictions/pb0_"+name+"_temperatures.csv")
     glm_no_date = glm.drop('date',axis=1)
     diffs = np.array([ row.values[-9] - row.values[0] if len(row) > 8 and math.isnan(row.values[-8]) and not isinstance(row.values[-9], str)
                        else (row.values[-8] - row.values[0]) if len(row) > 7 and math.isnan(row.values[-7]) and not isinstance(row.values[-8], str) 
@@ -164,8 +167,8 @@ for i, lake in enumerate(ids):
     obs = obs[obs['depth'] <= max_depth]
 
     #processed obs file / feats / files
-    obs1 = np.load("../../data/processed/lake_data/" + lake + "/train_b.npy")
-    obs2 = np.load("../../data/processed/lake_data/" + lake + "/test_b.npy")
+    obs1 = np.load("../../data/processed/" + lake + "/train.npy")
+    obs2 = np.load("../../data/processed/" + lake + "/test.npy")
     shape0 = obs1.shape[0]
     shape1 = obs1.shape[1]
     trn_flt = obs1.flatten()
@@ -174,7 +177,7 @@ for i, lake in enumerate(ids):
     trn_tst = trn_flt.reshape((shape0, shape1))
     obs_f = trn_tst
     # np.save("../../../data/processed/lake_data/"+lake+"/full_obs.npy", trn_tst)
-    feats_f = np.load("../../data/processed/lake_data/" + lake + "/features.npy")
+    feats_f = np.load("../../data/processed/" + lake + "/features.npy")
 
     #number of obs
     n_obs = np.count_nonzero(np.isfinite(obs_f))
@@ -276,4 +279,4 @@ for i, lake in enumerate(ids):
     # metadata.to_feather("../../../metadata/lake_metadata_2700plus_temp.feather")
 
     # save_data = metadata.reset_index()
-    metadata.to_feather("../../metadata/lake_metadata_baseJune2020.feather")
+    metadata.to_feather("../../metadata/lake_metadata_full.feather")
