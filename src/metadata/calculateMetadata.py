@@ -217,8 +217,7 @@ for i, lake in enumerate(ids):
             continue
         # if len(np.where(glm['DateTime'] == np.datetime64(pd.to_datetime(obs['date'][t]).tz_localize('Etc/GMT+6')).astype('datetime64[D]'))[0]) == 0:
         row_ind = np.where(glm['date'] == obs['date'].values[t])[0][0]
-        col_ind = int(obs.iloc[t].depth / 0.5) 
-        pdb.set_trace()
+        col_ind = int(obs.iloc[t].depth / 0.5) + 1
         if col_ind > glm.shape[1]-2:
             ind_to_del.append(t)
             continue
@@ -234,8 +233,8 @@ for i, lake in enumerate(ids):
             continue
         # if len(np.where(glm['DateTime'] == np.datetime64(pd.to_datetime(obs['date'][t]).tz_localize('Etc/GMT+6')).astype('datetime64[D]'))[0]) == 0:
         row_ind = np.where(glm['date'] == obs['date'].values[t])[0][0]
-        col_ind = int(obs.iloc[t].depth / 0.5)
-        if col_ind > glm.shape[1]-2:
+        col_ind = int(obs.iloc[t].depth / 0.5) + 1
+        if col_ind > glm.shape[1]-1:
             ind_to_del_full.append(t)
             continue
         elif math.isnan(glm.iloc[row_ind, col_ind]):
@@ -249,26 +248,7 @@ for i, lake in enumerate(ids):
     obs_temps_full = np.delete(obs_temps_full, ind_to_del_full, axis=0)
     glm_uncal_rmse_third = rmse(glm_temps, obs_temps)
     glm_uncal_rmse_full = rmse(glm_temps_full, obs_temps_full)
-    #['nhd_id', 'K_d', 'SDF', 'canopy', 'fullname', 'glm_uncal_rmse',
-       # 'latitude', 'longitude', 'max_depth', 'surface_area', 'sw_mean',
-       # 'sw_std', 'lw_mean', 'lw_std', 'at_mean', 'at_std', 'rh_mean', 'rh_std',
-       # 'ws_mean', 'ws_std', 'rain_mean', 'rain_std', 'snow_mean', 'snow_std',
-       # 'sw_mean_sp', 'sw_std_sp', 'lw_mean_sp', 'lw_std_sp', 'at_mean_sp',
-       # 'at_std_sp', 'rh_mean_sp', 'rh_std_sp', 'ws_mean_sp', 'ws_std_sp',
-       # 'rain_mean_sp', 'rain_std_sp', 'snow_mean_sp', 'snow_std_sp',
-       # 'sw_mean_su', 'sw_std_su', 'lw_mean_su', 'lw_std_su', 'at_mean_su',
-       # 'at_std_su', 'rh_mean_su', 'rh_std_su', 'ws_mean_su', 'ws_std_su',
-       # 'rain_mean_su', 'rain_std_su', 'snow_mean_su', 'snow_std_su',
-       # 'sw_mean_au', 'sw_std_au', 'lw_mean_au', 'lw_std_au', 'at_mean_au',
-       # 'at_std_au', 'rh_mean_au', 'rh_std_au', 'ws_mean_au', 'ws_std_au',
-       # 'rain_mean_au', 'rain_std_au', 'snow_mean_au', 'snow_std_au',
-       # 'sw_mean_wi', 'sw_std_wi', 'lw_mean_wi', 'lw_std_wi', 'at_mean_wi',
-       # 'at_std_wi', 'rh_mean_wi', 'rh_std_wi', 'ws_mean_wi', 'ws_std_wi',
-       # 'rain_mean_wi', 'rain_std_wi', 'snow_mean_wi', 'snow_std_wi', 'n_obs',
-       # 'n_prof', 'n_obs_wi', 'n_obs_sp', 'n_obs_su', 'n_obs_au',
-       # 'obs_depth_mean_frac', 'obs_temp_mean', 'obs_temp_std', 'obs_temp_skew',
-       # 'obs_temp_kurt', 'zero_temp_doy', 'at_amp', 'lathrop_strat',
-       # 'glm_strat_perc', 'ws_sp_mix']
+
     new_feat = pd.Series([lake, k_d, sdf, np.nan, fullname, glm_uncal_rmse_third, glm_uncal_rmse_full, lat, lon, max_depth, surf_area, sw_m, sw_s, lw_m, lw_s, at_m, at_s, rh_m, rh_s, ws_m, ws_s, r_m, r_s, s_m, s_s, \
                 sw_m_wi, sw_s_wi, lw_m_wi, lw_s_wi, at_m_wi, at_s_wi, rh_m_wi, rh_s_wi, ws_m_wi, ws_s_wi, r_m_wi, r_s_wi, s_m_wi, s_s_wi, \
                 sw_m_sp, sw_s_sp, lw_m_sp, lw_s_sp, at_m_sp, at_s_sp, rh_m_sp, rh_s_sp, ws_m_sp, ws_s_sp, r_m_sp, r_s_sp, s_m_sp, s_s_sp, \
@@ -277,7 +257,4 @@ for i, lake in enumerate(ids):
                 int(n_obs), int(n_prof), int(n_obs_wi), int(n_obs_sp), int(n_obs_su), int(n_obs_au), mean_obs_frac, mean_obs_temp, std_obs_temp, \
                 skew_obs_temp, kurt_obs_temp, subzero_ind, at_amp, lathrop, glm_strat_perc, ws_sp_mix], index=new_lab)
     metadata = metadata.append(new_feat, ignore_index=True)
-    # metadata.to_feather("../../../metadata/lake_metadata_2700plus_temp.feather")
-
-    # save_data = metadata.reset_index()
     metadata.to_feather("../../metadata/lake_metadata_full.feather")
