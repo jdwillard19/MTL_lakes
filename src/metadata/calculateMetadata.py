@@ -58,6 +58,7 @@ for i, lake in enumerate(ids):
     k_d = usgs_meta[usgs_meta['site_id']==lake]['K_d'].values[0]
     lon = usgs_meta[usgs_meta['site_id'] == lake].centroid_lon.values[0]
     lat = usgs_meta[usgs_meta['site_id'] == lake].centroid_lat.values[0]
+    pdb.set_trace()
     sdf = usgs_meta[usgs_meta['site_id'] == lake].SDF.values[0]
     fullname = usgs_meta[usgs_meta['site_id'] == lake].lake_name.values[0]
     if verbose:
