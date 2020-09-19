@@ -6,9 +6,8 @@ import sys
 import math
 import re
 from scipy.stats import skew, kurtosis
-# sys.path.append('../../data')
+sys.path.append('../data')
 from date_operations import get_season, findZeroTempDay
-# from metadata_ops import getMeteoFileName
 from data_operations import rmse
 
 ###################################################
