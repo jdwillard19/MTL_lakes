@@ -33,7 +33,7 @@ for _, lake_id in enumerate(train_lakes):
 	lake_df_res = lake_df_res[lake_df_res.source_id != 'source_id']
 
 	#get metadata differences between target and all the sources
-	lake_df = pd.read_feather("../../metadata/diff/target_"+lake_id+".feather")
+	lake_df = pd.read_feather("../../metadata/diffs/target_"+lake_id+".feather")
 	lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes)]
 	lake_df_res = lake_df_res[np.isin(lake_df_res['source_id'], train_lakes)]
 	lake_df = pd.merge(left=lake_df, right=lake_df_res.astype('object'), left_on='site_id', right_on='source_id')
