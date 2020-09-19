@@ -3,14 +3,19 @@ import numpy as np
 import os
 import pdb
 
+
+###########################################################################3###############3
+# (Sept 2020 - Jared) - this script uses the metadata created in calculateMetadata.py
+#                       to calculate the differences between any two lakes and stores that information
+#############################################################################################
+
 metadata = pd.read_feather("../../metadata/lake_metadata_full.feather")
 meta = metadata
 ids = metadata['site_id'].values
-if not os.path.exists("../../metadata/diffs")
+if not os.path.exists("../../metadata/diffs"):
     os.mkdir("../../metadata/diffs")
-# ids = metadata['nhd_id']
 metadata.set_index('site_id', inplace=True)
-#filter metadata to pball ids
+
 for i, lake in enumerate(ids):
     print("lake ", i, "/", ids.shape[0], ": ", lake)
     targ = meta.loc[lake][['K_d', 'SDF', 'latitude','longitude', 'max_depth', 'surface_area', \
@@ -58,43 +63,8 @@ for i, lake in enumerate(ids):
     final_meta['dif_sqrt_surface_area'] = np.sqrt(targ['surface_area']) - np.sqrt(others['surface_area'])
     #index was after strat_perc
     final_meta['perc_dif_sqrt_surface_area'] = (np.abs(np.sqrt(targ['surface_area']) - np.sqrt(others['surface_area'])) / ((np.sqrt(targ['surface_area']) + np.sqrt(others['surface_area']))/2))*100
-    # labs = ['ad_k_d', 'ad_SDF', 'ad_at_amp', 'ad_at_mean','ad_at_mean_au','ad_at_mean_sp', 'ad_at_mean_au', 'ad_at_mean_wi', \
-    #                  'ad_at_std', 'ad_at_std_au', 'ad_at_std_sp', 'ad_at_std_su', 'ad_at_std_wi', 'ad_glm_strat_perc', 'ad_lathrop_strat', \
-    #                  'ad_lat', 'ad_long', 'ad_lw_mean', 'ad_lw_mean_au', \
-    #                  'ad_lw_mean_sp', 'ad_lw_mean_su', \
-    #                  'ad_lw_mean_wi', 'ad_lw_std', 'ad_lw_std_au', 'ad_lw_std_sp', 'ad_lw_std_su', 'ad_lw_std_wi', 'ad_max_depth', 'n_obs', \
-    #                  'n_obs_au', 'n_obs_sp', 'n_obs_su', 'n_obs_wi', \
-    #                  'n_prof', 'obs_depth_mean_frac', \
-    #                  'obs_temp_kurt', 'obs_temp_mean', 'obs_temp_mean_airdif', 'obs_temp_skew', 'obs_temp_std', 'ad_rain_mean', 'ad_rain_mean_au', \
-    #                  'ad_rain_mean_sp', 'ad_rain_mean_su', 'ad_rain_mean_wi', 'ad_rain_std', \
-    #                  'ad_rain_std_au', 'ad_rain_std_sp', \
-    #                  'ad_rain_std_su', 'ad_rain_std_wi', 'ad_rh_mean', 'ad_rh_mean_au', 'ad_rh_mean_sp', 'ad_rh_mean_su', 'ad_rh_mean_wi', 'ad_rh_std', \
-    #                  'ad_rh_std_au', 'ad_rh_std_sp', 'ad_rh_std_su', 'ad_rh_std_wi', \
-    #                  'ad_snow_mean', 'ad_snow_mean_au', \
-    #                  'ad_snow_mean_sp', 'ad_snow_mean_su', 'ad_snow_mean_wi', 'ad_snow_std', 'ad_snow_std_au', 'ad_snow_std_sp', 'ad_snow_std_su', 'ad_snow_std_wi', \
-    #                  'ad_surface_area', 'ad_sw_mean', 'ad_sw_mean_au', 'ad_sw_mean_sp', \
-    #                  'ad_sw_mean_su', 'ad_sw_mean_wi', 'ad_sw_std', 'ad_sw_std_au', 'ad_sw_std_sp', 'ad_sw_std_su', \
-    #                  'ad_sw_std_wi', 'ad_ws_mean', 'ad_ws_mean_au', 'ad_ws_mean_sp', 'ad_ws_mean_su', 
-    #                  'ad_ws_mean_wi', 'ad_ws_std', 'ad_ws_std_au', 'ad_ws_std_sp', 'ad_ws_std_su', 'ad_ws_std_wi', \
-    #                  'ad_zero_temp_doy', 'dif_k_d', 'dif_SDF', 'dif_at_amp', 'dif_at_mean','dif_at_mean_au','dif_at_mean_sp', 'dif_at_mean_au', 'dif_at_mean_wi', \
-    #                  'dif_at_std', 'dif_at_std_au', 'dif_at_std_sp', 'dif_at_std_su', 'dif_at_std_wi', 'dif_glm_strat_perc', 'dif_lathrop_strat', \
-    #                  'dif_lat', 'dif_long', 'dif_lw_mean', 'dif_lw_mean_au', \
-    #                  'dif_lw_mean_sp', 'dif_lw_mean_su', \
-    #                  'dif_lw_mean_wi', 'dif_lw_std', 'dif_lw_std_au', 'dif_lw_std_sp', 'dif_lw_std_su', 'dif_lw_std_wi', 'dif_max_depth', 'n_obs', \
-    #                  'n_obs_au', 'n_obs_sp', 'n_obs_su', 'n_obs_wi', \
-    #                  'n_prof', 'obs_depth_mean_frac', \
-    #                  'obs_temp_kurt', 'obs_temp_mean', 'obs_temp_mean_airdif', 'obs_temp_skew', 'obs_temp_std', 'dif_rain_mean', 'dif_rain_mean_au', \
-    #                  'dif_rain_mean_sp', 'dif_rain_mean_su', 'dif_rain_mean_wi', 'dif_rain_std', \
-    #                  'dif_rain_std_au', 'dif_rain_std_sp', \
-    #                  'dif_rain_std_su', 'dif_rain_std_wi', 'dif_rh_mean', 'dif_rh_mean_au', 'dif_rh_mean_sp', 'dif_rh_mean_su', 'dif_rh_mean_wi', 'dif_rh_std', \
-    #                  'dif_rh_std_au', 'dif_rh_std_sp', 'dif_rh_std_su', 'dif_rh_std_wi', \
-    #                  'dif_snow_mean', 'dif_snow_mean_au', \
-    #                  'dif_snow_mean_sp', 'dif_snow_mean_su', 'dif_snow_mean_wi', 'dif_snow_std', 'dif_snow_std_au', 'dif_snow_std_sp', 'dif_snow_std_su', 'dif_snow_std_wi', \
-    #                  'dif_surface_area', 'dif_sw_mean', 'dif_sw_mean_au', 'dif_sw_mean_sp', \
-    #                  'dif_sw_mean_su', 'dif_sw_mean_wi', 'dif_sw_std', 'dif_sw_std_au', 'dif_sw_std_sp', 'dif_sw_std_su', \
-    #                  'dif_sw_std_wi', 'dif_ws_mean', 'dif_ws_mean_au', 'dif_ws_mean_sp', 'dif_ws_mean_su', 
-    #                  'dif_ws_mean_wi', 'dif_ws_std', 'dif_ws_std_au', 'dif_ws_std_sp', 'dif_ws_std_su', 'dif_ws_std_wi', \
-    #                  'dif_zero_temp_doy']
+
+
 
     labs = ['ad_k_d', 'ad_SDF', 'ad_lat', 'ad_long','ad_max_depth','ad_surface_area', 'ad_sw_mean', 'ad_sw_std', \
                      'ad_lw_mean', 'ad_lw_std', 'ad_at_mean', 'ad_at_std', 'ad_rh_mean', 'ad_rh_std', 'ad_ws_mean', 'ad_ws_std', \
@@ -133,7 +103,7 @@ for i, lake in enumerate(ids):
     final_meta.columns = labs
     final_meta.reset_index(inplace=True)
     pdb.set_trace()
-    if not os.path.exists("../../metadata/diffs/"+lake)
+    if not os.path.exists("../../metadata/diffs/"+lake):
         os.mkdir("../../metadata/diffs/"+lake)
     final_meta.to_feather("../../metadata/diffs/target_"+lake+".feather")
 
