@@ -15,10 +15,6 @@ from data_operations import rmse
 # (June 2020 - Jared) - file create - create metadata table
 ###################################################
 
-ids = pd.read_csv("../../metadata/sites_moreThan10ProfilesWithGLM_June2020Update.csv")
-ids = ids['site_id'].values
-# ids = np.append(ids, ['120018008', '120020307', '120020636', '32671150', '58125241', '120020800', '91598525'])
-# metadata.set_index('site_id', inplace=True)
 base_path = "../../data/raw/sb_mtl_data_release/"
 obs_df = pd.read_csv(base_path+"obs/temperature_observations.csv")
 metadata = pd.read_feather("../../metadata/lake_metadata.feather")
