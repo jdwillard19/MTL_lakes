@@ -11,28 +11,23 @@ from date_operations import get_season, findZeroTempDay
 # from metadata_ops import getMeteoFileName
 from data_operations import rmse
 
-##################################################
-# (June 2020 - Jared) - create metadata table
+###################################################
+# (Sept 2020 - Jared) - clean up for code repo construction, reference new data releaese instead
+# (June 2020 - Jared) - file create - create metadata table
 ###################################################
 
 ids = pd.read_csv("../../metadata/sites_moreThan10ProfilesWithGLM_June2020Update.csv")
 ids = ids['site_id'].values
 # ids = np.append(ids, ['120018008', '120020307', '120020636', '32671150', '58125241', '120020800', '91598525'])
 # metadata.set_index('site_id', inplace=True)
+base_path = "../../data/raw/sb_mtl_data_release/"
+obs_df = pd.read_csv(base_path+"obs/temperature_observations.csv")
+metadata = pd.read_feather("../../metadata/lake_metadata.feather")
+ids = np.unique(obs_df['site_id'].values)
 days_per_year = 366
-usgs_meta = pd.read_csv("../../metadata/data_release_metadata.csv")
-# labels =  metadata.columns.tolist() + \
-#            ['sw_mean', 'sw_std', 'lw_mean', 'lw_std', 'at_mean', 'at_std', 'rh_mean', 'rh_std', 
-#             'ws_mean', 'ws_std', 'rain_mean', 'rain_std', 'snow_mean', 'snow_std',
-#             'sw_mean', 'sw_std', 'lw_mean', 'lw_std', 'at_mean', 'at_std', 'rh_mean', 'rh_std', 
-#             'ws_mean', 'ws_std', 'rain_mean', 'rain_std', 'snow_mean', 'snow_std',
-#             'sw_mean', 'sw_std', 'lw_mean', 'lw_std', 'at_mean', 'at_std', 'rh_mean', 'rh_std', 
-#             'ws_mean', 'ws_std', 'rain_mean', 'rain_std', 'snow_mean', 'snow_std',
-#             'sw_mean', 'sw_std', 'lw_mean', 'lw_std', 'at_mean', 'at_std', 'rh_mean', 'rh_std', 
-#             'ws_mean', 'ws_std', 'rain_mean', 'rain_std', 'snow_mean', 'snow_std',
-#             'sw_mean', 'sw_std', 'lw_mean', 'lw_std', 'at_mean', 'at_std', 'rh_mean', 'rh_std', 
-#             'ws_mean', 'ws_std', 'rain_mean', 'rain_std', 'snow_mean', 'snow_std',
-#              'n_obs', 'n_prof', 'obs_depth_mean_frac', 'obs_temp_mean', 'obs_temp_std']
+usgs_meta = pd.read_csv("../../metadata/lake_metadata_from_data_release.csv")
+
+
 new_lab = ['site_id', 'K_d', 'SDF', 'canopy', 'fullname', 'glm_uncal_rmse_third', 'glm_uncal_rmse_full',
        'latitude', 'longitude', 'max_depth', 'surface_area', 'sw_mean',
        'sw_std', 'lw_mean', 'lw_std', 'at_mean', 'at_std', 'rh_mean', 'rh_std',
@@ -62,12 +57,8 @@ for i, lake in enumerate(ids):
     #load meteorological data
     # if lake in metadata['site_id'].values:
     #     continue
-    nml_data = []
-    with open('../../data/raw/sb_pgdl_data_release/cfg/nhdhr_'+lake+'.nml', 'r') as file:
-        nml_data = file.read().replace('\n', '')
 
-    meteo_path = re.search('meteo_fl\s+=\s+\'(NLDAS.+].csv)\'', nml_data).group(1)
-
+    pdb.set_trace()
     surf_area = float(re.search('A\s*=.*,\s*(\d+(\.\d+)?).*&time', nml_data).group(1))
     max_depth = float(re.search('lake_depth\s*=\s*(\d+(\.\d+)?)', nml_data).group(1))
     k_d = float(re.search('Kw\s*=\s*(\d+(\.\d+)?)', nml_data).group(1))
@@ -80,7 +71,7 @@ for i, lake in enumerate(ids):
     # print("kd ", k_d)
 
 
-    meteo = pd.read_csv("../../data/raw/sb_pgdl_data_release/meteo/"+meteo_path)
+    meteo = pd.read_csv("../../data/raw/sb_pgdl_data_release/meteo/nhdhr_"+lake+".csv")
 
     dates = [pd.Timestamp(t).to_pydatetime() for t in meteo['time']]
     n_dates_meteo = len(dates)

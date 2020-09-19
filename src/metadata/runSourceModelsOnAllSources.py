@@ -19,33 +19,30 @@ sys.path.append('../data')
 sys.path.append('../models')
 from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
 
+#################################################################################################
+# (Sept 2019 - Jared) - runs all source models on all other source lakes to create meta dataset
+# - disable "use_gpu" flag for use on non-GPU systems, but GPU highly recommended
+#############################################################################################
 
-#read lake metadata file to get all the lakenames
-meta_new = pd.read_feather("../../metadata/lake_metadata.feather")
-metadata = meta_new
+#read in needed data
+metadata = pd.read_feather("../../metadata/lake_metadata.feather")
+metadata.set_index("site_id", inplace=True)
+metadata.columns = [c.replace(' ', '_') for c in metadata.columns]
 ids = pd.read_csv('../../metadata/pball_site_ids.csv', header=None)
-
-target_lakes = [str(i) for i in ids.values.flatten()] # to loop through all lakes
-source_lakes = [str(i) for i in ids.values.flatten()] # to loop through all lakes
 glm_all_f = pd.read_csv("../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
-metadata.set_index("site_id", inplace=True)
-# meta_new.set_index("nhd_id", inplace=True)
-metadata.columns = [c.replace(' ', '_') for c in metadata.columns]
-meta_new.columns = [c.replace(' ', '_') for c in meta_new.columns]
-csv_all = [] # to write results to
+
+#write results to below lists
+csv_all = [] 
 first_row_str_all = "target_id,source_id,rmse"
 csv_all.append(first_row_str_all)
 
 #target agnostic model and data params
 use_gpu = True
 n_features = 8
-# n_hidden = 20
 seq_length = 350
 win_shift = 175
 begin_loss_ind = 0
-
-
 
 #run params
 save = True
@@ -56,8 +53,6 @@ ct = 0
 #########################################################3
 for ctt, target_id in enumerate(train_lakes): 
     nid = target_id
-    # if nid == '120018008' or nid == '120020307' or nid == '120020636' or nid == '32671150' or nid =='58125241'or nid=='120020800' or nid=='91598525':
-    #     continue
     ct += 1
 
     data_dir_target = "../../data/processed/"+target_id+"/" 
@@ -68,12 +63,6 @@ for ctt, target_id in enumerate(train_lakes):
                                        win_shift = win_shift, begin_loss_ind = begin_loss_ind, 
                                        latter_third_test=True, outputFullTestMatrix=True, 
                                        allTestSeq=True, oldFeat=False, postProcessSplits=False)
-
-
-    #           row_vals = [source_id, mat_rmse, geo_diff, tempdtw_diff, surf_area_diff, max_depth_diff, lat_diff, long_diff, clar_diff,
-            #           surf_area_diff2, max_depth_diff2, lat_diff2, long_diff2, clar_diff2]
-            # row_vals_all = [target_id, source_id, mat_rmse, geo_diff, tempdtw_diff, surf_area_diff, max_depth_diff, lat_diff, long_diff, clar_diff,
-            #           surf_area_diff2, max_depth_diff2, lat_diff2, long_diff2, clar_diff2]
 
     #csv to append to for each source lake
     csv_targ = []
@@ -118,7 +107,10 @@ for ctt, target_id in enumerate(train_lakes):
             return x, hidden
 
     print("targetLake"+str(ct)+": "+target_id)
+
+    #define source lakes for target 
     all_but_target = [x for x in train_lakes if x != target_id]
+    
     #for each source lake, run on target lake and record result
     for cts, source_id in enumerate(all_but_target):
         nid = source_id
@@ -135,6 +127,7 @@ for ctt, target_id in enumerate(train_lakes):
         label_mats = np.empty((n_depths, n_test_dates_target)) 
         output_mats[:] = np.nan
         label_mats[:] = np.nan
+
         #save output path
         save_output_path = "../../results/transfer_learning/target_"+target_id+"/source_"+source_id+"/PGRNN_basic_pball"
         save_label_path = "../../results/transfer_learning/target_"+target_id+"/label"
@@ -211,22 +204,9 @@ for ctt, target_id in enumerate(train_lakes):
 
                 mat_rmse = np.sqrt(((loss_output - loss_label) ** 2).mean())
                 print(source_id+" rmse=" + str(mat_rmse) + " on " + target_id)
-
-
-                            #calculate energy at each timestep
-                output_torch = torch.from_numpy(outputm_npy).float()
-                if use_gpu:
-                    output_torch = output_torch.cuda()
-                # energies = calculate_energy(output_torch, depth_areas, use_gpu)
-                # energies = energies.cpu().numpy()
                 avg_mse = avg_mse.cpu().numpy()
-                # if save: 
-                #     saveTemperatureMatrix(outputm_npy, labelm_npy, unique_tst_dates_target, source_id,target_id, 
-                #                           save_path=save_output_path, label_path = save_label_path)
 
-            #############################
-            #get metadata differences (independent vars in model selection regression)
-            ##############################
+
 
             row_vals = [source_id, mat_rmse]
             row_vals_all = [target_id, source_id, mat_rmse]
@@ -240,7 +220,7 @@ for ctt, target_id in enumerate(train_lakes):
 
 
     with open("../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic_pball",'a') as file:
-        # print("saving to ../../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic6")
+        print("saving to ../../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic_pball")
         for line in csv_targ:
             file.write(line)
             file.write('\n')

@@ -54,6 +54,9 @@ Project Organization
             └── preprocess_morphometry.py <- parse lake geometries for modeling
     
     │   │
+    │   ├── metadata         <- Scripts to create metadata for metamodel 
+    |   |   ├── runSourceModelsOnAllSources.py - create performance metadata
+    models to make
     │   │
     │   ├── models         <- Scripts to train models and then use trained models to make
     │   │   │                 predictions
