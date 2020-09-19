@@ -52,7 +52,6 @@ for i, lake in enumerate(ids):
     # if lake in metadata['site_id'].values:
     #     continue
 
-    pdb.set_trace()
     surf_area = usgs_meta[usgs_meta['site_id']==lake]['surface_area'].values[0]
     max_depth = usgs_meta[usgs_meta['site_id']==lake]['max_depth'].values[0]
     k_d = usgs_meta[usgs_meta['site_id']==lake]['K_d'].values[0]
