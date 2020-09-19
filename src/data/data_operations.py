@@ -13,7 +13,10 @@ import pdb
 #this file contains useful functions for transforming data and also useful calculations, sorted alphabetically
 
 def rmse(predictions, targets):
-    return np.sqrt(((predictions - targets) ** 2).mean())
+	if np.isnan(((predictions - targets) ** 2)).all():
+		return np.nan
+	else:
+    	return np.sqrt(((predictions - targets) ** 2).mean())
     
 def buildTrainAndTestForRNN(mat,seq_length,n_features,train_split=0.8, output_phys_loss_data=False):
 	#this function splits the data into train and test, and optionally includes the matching
