@@ -17,6 +17,7 @@ import re
 glm_all_f = pd.read_csv("../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
 train_df = pd.read_feather("../../results/transfer_learning/glm/train_rmses_pball.feather")
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
+train_lakes_wp = np.unique(glm_all_f['target_id'].values)
 n_lakes = len(train_lakes)
 feats = train_df.columns[80:-1]
 
@@ -34,9 +35,8 @@ for _, lake_id in enumerate(train_lakes):
 
 	#get metadata differences between target and all the sources
 	lake_df = pd.read_feather("../../metadata/diffs/target_nhdhr_"+lake_id+".feather")
-	lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes)]
+	lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes_wp)]
 	lake_df_res = lake_df_res[np.isin(lake_df_res['source_id'], train_lakes)]
-	pdb.set_trace()
 	lake_df = pd.merge(left=lake_df, right=lake_df_res.astype('object'), left_on='site_id', right_on='source_id')
 	new_df = lake_df
 	train_df = pd.concat([train_df, new_df], ignore_index=True)
