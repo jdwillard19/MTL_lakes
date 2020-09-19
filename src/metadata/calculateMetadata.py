@@ -201,7 +201,6 @@ for i, lake in enumerate(ids):
     skew_obs_temp = skew(obs['temp'])
     kurt_obs_temp = kurtosis(obs['temp'])
 
-    pdb.set_trace()
     #calculate glm error
     ind_to_del = []
     ind_to_del_full = []
@@ -220,7 +219,7 @@ for i, lake in enumerate(ids):
         # if len(np.where(glm['DateTime'] == np.datetime64(pd.to_datetime(obs['date'][t]).tz_localize('Etc/GMT+6')).astype('datetime64[D]'))[0]) == 0:
         row_ind = np.where(glm['date'] == obs['date'].values[t])[0][0]
         col_ind = int(obs.iloc[t].depth / 0.5) + 1
-        if col_ind > glm.shape[1]-2:
+        if col_ind > glm.shape[1]-1:
             ind_to_del.append(t)
             continue
         elif math.isnan(glm.iloc[row_ind, col_ind]):
