@@ -47,8 +47,6 @@ new_lab = ['site_id', 'K_d', 'SDF', 'canopy', 'fullname', 'glm_uncal_rmse_third'
 metadata = pd.DataFrame(columns=new_lab)
 # metadata = pd.read_feather("../../../metadata/lake_metadata_2700plus_temp.feather")
 for i, lake in enumerate(ids):
-    if i < 1257:
-      continue
     print("lake ", i, ": ", lake)
     name = lake
     #load meteorological data
