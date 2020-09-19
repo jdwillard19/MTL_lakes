@@ -3,12 +3,11 @@ import numpy as np
 import os
 import pdb
 
-metadata = pd.read_feather("../../metadata/lake_metadata.feather")
+metadata = pd.read_feather("../../metadata/lake_metadata_full.feather")
 meta = metadata
-sites = pd.read_csv('../../../metadata/sites_moreThan10ProfilesWithGLM_June2020Update.csv')
-
-ids = pd.read_csv('../../../metadata/pball_site_ids.csv', header=None)
 ids = metadata['site_id'].values
+if not os.path.exists("../../metadata/diffs")
+    os.mkdir("../../metadata/diffs")
 # ids = metadata['nhd_id']
 metadata.set_index('site_id', inplace=True)
 #filter metadata to pball ids
@@ -132,10 +131,11 @@ for i, lake in enumerate(ids):
                      'dif_rain_mean_wi', 'dif_rain_std_wi', 'dif_snow_mean_wi', 'dif_snow_std_wi', 'dif_zero_temp_doy', 'dif_at_amp', 'dif_lathrop_strat', 'dif_glm_strat_perc', \
                      'dif_ws_sp_mix', 'perc_dif_max_depth', 'perc_dif_surface_area', 'dif_sqrt_surface_area', 'perc_dif_sqrt_surface_area']
     final_meta.columns = labs
-    # diff['obs_air_diff'] = others['obs_temp_mean'] - targ['at_mean']
-    # if not os.path.exists("../../../metadata/diff/target_"+lake+"_wStats.csv"):
     final_meta.reset_index(inplace=True)
-    final_meta.to_feather("../../../metadata/diff/target_"+lake+"_pball_Aug2020.feather")
+    pdb.set_trace()
+    if not os.path.exists("../../metadata/diffs/"+lake)
+        os.mkdir("../../metadata/diffs/"+lake)
+    final_meta.to_feather("../../metadata/diffs/target_"+lake+".feather")
 
 
 
