@@ -16,9 +16,9 @@ from data_operations import rmse
 ###################################################
 
 base_path = "../../data/raw/sb_mtl_data_release/"
-obs_df = pd.read_csv(base_path+"obs/temperature_observations.csv")
+all_obs = pd.read_csv(base_path+"obs/temperature_observations.csv")
 metadata = pd.read_feather("../../metadata/lake_metadata.feather")
-ids = np.unique(obs_df['site_id'].values)
+ids = np.unique(all_obs['site_id'].values)
 days_per_year = 366
 usgs_meta = pd.read_csv("../../metadata/lake_metadata_from_data_release.csv")
 
@@ -45,7 +45,6 @@ new_lab = ['site_id', 'K_d', 'SDF', 'canopy', 'fullname', 'glm_uncal_rmse_third'
        'glm_strat_perc', 'ws_sp_mix']
 metadata = pd.DataFrame(columns=new_lab)
 # metadata = pd.read_feather("../../../metadata/lake_metadata_2700plus_temp.feather")
-all_obs = pd.read_csv("../../data/raw/sb_pgdl_data_release/obs/temperature_observations.csv")
 for i, lake in enumerate(ids):
     print("lake ", i, ": ", lake)
     name = lake
