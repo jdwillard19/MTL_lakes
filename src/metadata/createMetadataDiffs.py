@@ -102,7 +102,6 @@ for i, lake in enumerate(ids):
                      'dif_ws_sp_mix', 'perc_dif_max_depth', 'perc_dif_surface_area', 'dif_sqrt_surface_area', 'perc_dif_sqrt_surface_area']
     final_meta.columns = labs
     final_meta.reset_index(inplace=True)
-    pdb.set_trace()
     if not os.path.exists("../../metadata/diffs/"+lake):
         os.mkdir("../../metadata/diffs/"+lake)
     final_meta.to_feather("../../metadata/diffs/target_"+lake+".feather")
