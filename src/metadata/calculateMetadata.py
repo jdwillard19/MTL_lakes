@@ -218,6 +218,7 @@ for i, lake in enumerate(ids):
         # if len(np.where(glm['DateTime'] == np.datetime64(pd.to_datetime(obs['date'][t]).tz_localize('Etc/GMT+6')).astype('datetime64[D]'))[0]) == 0:
         row_ind = np.where(glm['date'] == obs['date'].values[t])[0][0]
         col_ind = int(obs.iloc[t].depth / 0.5) 
+        pdb.set_trace()
         if col_ind > glm.shape[1]-2:
             ind_to_del.append(t)
             continue
