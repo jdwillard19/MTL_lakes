@@ -100,7 +100,7 @@ for i, lake in enumerate(ids):
 
     lathrop = 1 if ((max_depth - 0.1) / np.log10(surf_area/1e4)) > 3.8 else 0
 
-    glm = pd.read_csv("../../../data/raw/sb_pgdl_data_release/predictions/pb0_"+name+"_temperatures.csv")
+    glm = pd.read_csv("../../../data/raw/sb_mtl_data_release/predictions/pb0_"+name+"_temperatures.csv")
     first_col = glm.pop('date')
     glm.insert(0, 'date', first_col)
 
