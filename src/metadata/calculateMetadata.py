@@ -19,6 +19,7 @@ base_path = "../../data/raw/sb_mtl_data_release/"
 all_obs = pd.read_csv(base_path+"obs/temperature_observations.csv")
 metadata = pd.read_feather("../../metadata/lake_metadata.feather")
 ids = np.unique(all_obs['site_id'].values)
+ids_nop = [re.search('nhdhr_(.*)', x).group(1) for x in ids]
 days_per_year = 366
 usgs_meta = pd.read_csv("../../metadata/lake_metadata_from_data_release.csv")
 verbose = True
@@ -162,12 +163,12 @@ for i, lake in enumerate(ids):
     (s_m_au, s_s_au) = (meteo.iloc[seasons == 'autumn']['Snow'].mean(), meteo.iloc[seasons == 'autumn']['Snow'].std())
 
     #now do observation data
-    obs = all_obs[all_obs['site_id'] == 'nhdhr_'+lake]
+    obs = all_obs[all_obs['site_id'] == lake]
     obs = obs[obs['depth'] <= max_depth]
 
     #processed obs file / feats / files
-    obs1 = np.load("../../data/processed/" + lake + "/train.npy")
-    obs2 = np.load("../../data/processed/" + lake + "/test.npy")
+    obs1 = np.load("../../data/processed/" + ids_nop[i] + "/train.npy")
+    obs2 = np.load("../../data/processed/" + ids_nop[i] + "/test.npy")
     shape0 = obs1.shape[0]
     shape1 = obs1.shape[1]
     trn_flt = obs1.flatten()
@@ -176,7 +177,7 @@ for i, lake in enumerate(ids):
     trn_tst = trn_flt.reshape((shape0, shape1))
     obs_f = trn_tst
     # np.save("../../../data/processed/lake_data/"+lake+"/full_obs.npy", trn_tst)
-    feats_f = np.load("../../data/processed/" + lake + "/features.npy")
+    feats_f = np.load("../../data/processed/" + ids_nop[i] + "/features.npy")
 
     #number of obs
     n_obs = np.count_nonzero(np.isfinite(obs_f))
