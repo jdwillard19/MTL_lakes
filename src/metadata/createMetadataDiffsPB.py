@@ -20,7 +20,7 @@ for ct, i_d in enumerate(ids):
 	#for each target id
 	print(ct, ": ", i_d)
 	try:
-		diffs = pd.read_feather("../../metadata/diffs/target_"+ i_d +".feather")
+		diffs = pd.read_feather("../../metadata/diffs/target_nhdhr_"+ i_d +".feather")
 	except:
 		inc.append(i_d)
 		continue
