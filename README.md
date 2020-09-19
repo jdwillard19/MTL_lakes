@@ -15,14 +15,20 @@ Steps to run MTL pipeline
 `Rscript pull_data.r`
 
 
-3. Process zipped data, format for preprocessing with the following two scripts
+3. Process zipped data (code in src/data/), format for preprocessing with the following two scripts
 `cd src/data`
 `python process_zip_data.py`
 `python process_meteo_obs.py`
 
-4. Run main preprocessing script (still in src/data/ folder) and also grab morphometry from config files
+4. Run main preprocessing script (code in src/data) and also grab morphometry from config files
 `python preprocess.py`
 `python preprocess_morphometry.py`
+
+5. Create metadata files (code in src/metadata)
+`python calculateMetadata.py`
+`python createMetadataDiffs.py`
+
+
 
 
 
