@@ -4,7 +4,6 @@ import sys
 import os
 import pdb
 sys.path.append('../../data')
-from metadata_ops import nhd2nhdhr
 import shutil
 import re 
 
