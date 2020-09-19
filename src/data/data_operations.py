@@ -13,7 +13,7 @@ import pdb
 #this file contains useful functions for transforming data and also useful calculations, sorted alphabetically
 
 def rmse(predictions, targets):
-    if np.isnan(((predictions - targets) ** 2)).all():
+    if np.isnan(np.array(((predictions - targets)) ** 2)).all():
         return np.nan
     else:
         return np.sqrt(((predictions - targets) ** 2).mean())
