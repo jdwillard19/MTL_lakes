@@ -25,7 +25,7 @@ import datetime
 #multiple dataloader wrapping?
 import pdb
 from torch.utils.data import DataLoader
-from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs, preprocessForTargetLake
+from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
 #script start
 currentDT = datetime.datetime.now()
 print(str(currentDT))
