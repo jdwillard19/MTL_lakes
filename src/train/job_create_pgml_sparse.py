@@ -28,7 +28,7 @@ for name in ids:
     l2 = name
     if m:
         l2 = m.group(1)
-    header = "#!/bin/bash -l\n#PBS -l walltime=23:59:00,nodes=1:ppn=24:gpus=2,mem=16gb \n#PBS -m abe \n#PBS -N %s_pgml_sparse \n#PBS -o jobs/%s_pgml_sparse.stdout \n#PBS -q k40 \n"%(l2,l2)
+    header = "#!/bin/bash -l\n#PBS -l walltime=23:59:00,nodes=1:ppn=24:gpus=2,mem=16gb \n#PBS -m abe \n#PBS -N %s_pgml_sparse \n#PBS -o ./jobs/%s_pgml_sparse.stdout \n#PBS -q k40 \n"%(l2,l2)
     script = "source takeme_source.sh\n"
     script2 = "source activate mtl_env"
     script3 = "python train_PGDL_custom_sparse.py %s"%(l)
