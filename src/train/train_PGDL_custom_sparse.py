@@ -59,7 +59,7 @@ n_lakes = len(lakes)
 debug_train = False
 debug_end = False
 verbose = False
-pretrain = False
+pretrain = True
 save = True
 save_pretrain = True
 
