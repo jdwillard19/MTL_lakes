@@ -1,20 +1,10 @@
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import KFold
 import pdb
 import sys
 sys.path.append('../../data')
 from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
-import torch
-import torch.nn as nn
-import torch.utils.data
-from torch.utils.data import Dataset, DataLoader
-from torch.nn.init import xavier_normal_
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.svm import SVR
-from sklearn.model_selection import cross_val_score
-from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import GridSearchCV
 import re 
 
@@ -22,6 +12,9 @@ glm_all_f = pd.read_csv("../../../results/glm_transfer/RMSE_transfer_glm_pball.c
 train_df = pd.read_feather("../../../results/transfer_learning/glm/glm_meta_train_rmses.feather")
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
 n_lakes = len(train_lakes)
+
+#cv params
+nfolds = 24
 
 
 # Feats found in "pgmtl_feature_selection.py pasted here"
@@ -41,16 +34,20 @@ train_df = pd.DataFrame()
 
 
 for _, lake_id in enumerate(train_lakes):
+    new_df = pd.DataFrame()
 
-	new_df = pd.DataFrame()
-	lake_df_res = pd.read_csv("../../../results/transfer_learning/target_"+lake_id+"/results_all_source_models.csv") 
-	lake_df_res = lake_df_res[lake_df_res.source_id != 'source_id']
-	lake_df = pd.read_feather("../../../metadata/diff/target_"+lake_id+"_pball_Aug2020.feather")
-	lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes)]
-	lake_df_res = lake_df_res[np.isin(lake_df_res['source_id'], train_lakes)]
-	lake_df = pd.merge(left=lake_df, right=lake_df_res.astype('object'), left_on='site_id', right_on='source_id')
-	new_df = lake_df
-	train_df = pd.concat([train_df, new_df], ignore_index=True)
+    #get performance results (metatargets), filter out target as source
+    lake_df_res = pd.read_csv("../../results/transfer_learning/target_"+lake_id+"/resultsPGRNNbasic_pball",header=None,names=['source_id','rmse'])
+    lake_df_res = lake_df_res[lake_df_res.source_id != 'source_id']
+
+    #get metadata differences between target and all the sources
+    lake_df = pd.read_feather("../../metadata/diffs/target_nhdhr_"+lake_id+".feather")
+    lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes_wp)]
+    lake_df_res = lake_df_res[np.isin(lake_df_res['source_id'], train_lakes)]
+    lake_df_res['source_id2'] = ['nhdhr_'+str(x) for x in lake_df_res['source_id'].values]
+    lake_df = pd.merge(left=lake_df, right=lake_df_res.astype('object'), left_on='site_id', right_on='source_id2')
+    new_df = lake_df
+    train_df = pd.concat([train_df, new_df], ignore_index=True)
 
 
 
@@ -59,7 +56,7 @@ X = pd.DataFrame(train_df[feats])
 y = pd.DataFrame(train_df['rmse'])
 
 def gb_param_selection(X, y, nfolds):
-    ests = np.arange(1000,6000,100)
+    ests = np.arange(1000,6000,500)
     lrs = [.05,.01]
     # max_d = [3, 5]
     param_grid = {'n_estimators': ests, 'learning_rate' : lrs}
@@ -69,5 +66,5 @@ def gb_param_selection(X, y, nfolds):
     return grid_search.best_params_
 
 
-print(gb_param_selection(X, y, 24))
+print(gb_param_selection(X, y, nfolds))
 
