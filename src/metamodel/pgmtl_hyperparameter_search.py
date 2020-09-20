@@ -53,7 +53,7 @@ for _, lake_id in enumerate(train_lakes):
 
 
 X = pd.DataFrame(train_df[feats])
-y = pd.DataFrame(train_df['rmse'])
+y = np.ravel(pd.DataFrame(train_df['rmse']))
 
 def gb_param_selection(X, y, nfolds):
     ests = np.arange(1000,6000,500)
