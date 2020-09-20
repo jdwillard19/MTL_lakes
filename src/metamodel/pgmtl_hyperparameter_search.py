@@ -7,8 +7,8 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import GridSearchCV
 import re 
 
-glm_all_f = pd.read_csv("../../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
-train_df = pd.read_feather("../../../results/transfer_learning/glm/glm_meta_train_rmses.feather")
+glm_all_f = pd.read_csv("../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
+train_df = pd.read_feather("../../results/transfer_learning/glm/glm_meta_train_rmses.feather")
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
 n_lakes = len(train_lakes)
 
