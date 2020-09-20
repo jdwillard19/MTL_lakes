@@ -66,18 +66,13 @@ save_pretrain = True
 unsup_loss_cutoff = 40
 dc_unsup_loss_cutoff = 1e-3
 dc_unsup_loss_cutoff2 = 1e-2
-#############################################################
-#training loop
-####################################################################
+
+
+#model params
 n_hidden = 20 #fixed
 train_epochs = 10000
 pretrain_epochs = 10000
-# train_epochs = 1
-# pretrain_epochs = 1
 
-#####################3
-#params
-###########################33
 n_ep = pretrain_epochs  #number of epochs
 if debug_train or debug_end:
     n_ep = 10
@@ -106,16 +101,12 @@ hypsography) = buildLakeDataForRNNPretrain(lakename, data_dir, seq_length, n_fea
                                    excludeTest=False, normAll=False, normGE10=False)
 
 n_depths = torch.unique(all_data[:,:,0]).size()[0]
-# if verbose:
-    # print("n depths: ", n_depths)
 
 ####################
-#model params
+#training params
 ########################
 
 batch_size =trn_data.size()[0]
-# if lakename == '13393533':
-#     batch_size = 500
 yhat_batch_size = n_depths*1
 grad_clip = 1.0 #how much to clip the gradient 2-norm in training
 lambda1 = 0.0001#magnitude hyperparameter of l1 loss
