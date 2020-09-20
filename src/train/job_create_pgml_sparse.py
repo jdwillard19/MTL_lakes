@@ -30,8 +30,9 @@ for name in ids:
         l2 = m.group(1)
     # if not os.path.exists("../../../models/single_lake_models/"+name+"/PGRNN_basic_normAll_pball"): 
     header = "#!/bin/bash -l\n#PBS -l walltime=23:59:00,nodes=1:ppn=24:gpus=2,mem=16gb \n#PBS -m abe \n#PBS -N %s_pgml_sparse \n#PBS -o %s_pgml_sparse.stdout \n#PBS -q k40 \n"%(l2,l2)
-    script = "source takeme_source.sh\n"
-    script2 = "source activate mtl_env"
+    script = "source takeme.sh\n"
+    script2 = "source activate pytorch_new3"
+    # script3 = "python train_source_model.py %s"%(l)
     script3 = "python singleModel_customSparse.py %s"%(l)
     all= "\n".join([header,script,script2,script3])
     qsub = "\n".join(["qsub job_%s_pgml_sparse.sh"%(l),qsub])

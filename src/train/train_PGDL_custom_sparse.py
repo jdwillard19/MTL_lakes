@@ -14,8 +14,8 @@ import math
 import sys
 import os
 from itertools import product
-sys.path.append('../../data')
-sys.path.append('../../models')
+sys.path.append('../data')
+sys.path.append('../models')
 sys.path.append('/home/invyz/workspace/Research/lake_monitoring/src/data')
 # from data_operations import calculatePhysicalLossDensityDepth
 from pytorch_data_operations import buildLakeDataForRNNPretrain, calculate_energy,calculate_ec_loss_manylakes, transformTempToDensity, calculate_dc_loss
@@ -30,9 +30,11 @@ from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, par
 #script start
 currentDT = datetime.datetime.now()
 print(str(currentDT))
-####################################################3
-#  pretrain script, takes lakename as required command line argument
-###################################################33
+
+##############################################################
+#  (Sept 2020 - Jared) - Create PGDL models for experiment 2 of MTL paper,
+# trains PGDL with increasing amount of profiles as defined by "n_profiles" list below
+##############################################################################
 
 #enable/disable cuda 
 use_gpu = True 
@@ -93,7 +95,7 @@ save = True
 lake_ind = -1
 lakename = lakes[0]
 
-data_dir = "../../data/processed/lake_data/"+lakename+"/"
+data_dir = "../../data/processed/"+lakename+"/"
 
 ###############################
 # data preprocess
@@ -237,9 +239,9 @@ mse_criterion = nn.MSELoss()
 optimizer = optim.Adam(lstm_net.parameters(), lr=.005)#, weight_decay=0.01)
 
 #paths to save
-if not os.path.exists("../../../models/single_lake_models/"+lakename):
-    os.mkdir("../../../models/single_lake_models/"+lakename)
-save_path = "../../../models/single_lake_models/"+lakename+"/pretrain_sparse_model"
+if not os.path.exists("../../models/"+lakename):
+    os.mkdir("../../models/"+lakename)
+save_path = "../../models/"+lakename+"/pretrain_sparse_model"
 
 min_loss = 99999
 min_mse_tsterr = None
@@ -447,17 +449,15 @@ ec_lambda = .01
 dc_lambda = 1.
 lambda1 = 0
 win_shift = 175 #how much to slide the window on training set each time
-data_dir = "../../data/processed/lake_data/"+lakename+"/"
+data_dir = "../../data/processed/"+lakename+"/"
 
 #paths to save
 
-pretrain_path = "../../../models/single_lake_models/"+lakename+"/pretrain_sparse_model"
+pretrain_path = "../../models/"+lakename+"/pretrain_sparse_model"
 
 for n_prof, seed in product(n_profiles, seeds):
-    # if os.path.exists("../../../models/single_lake_models/"+lakename+"/PGRNN_basic_normAll_pball_" + str(n_prof) + "_" + str(seed)):
-        # print('already done')
-        # continue
-    save_path = "../../../models/single_lake_models/"+lakename+"/PGRNN_sparse_" + str(n_prof) + "_" + str(seed)
+
+    save_path = "../../models/"+lakename+"/PGRNN_sparse_" + str(n_prof) + "_" + str(seed)
 
     ###############################
     # data preprocess

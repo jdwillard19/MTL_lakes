@@ -1,6 +1,8 @@
-Meta Transfer Learning application for water temperature prediction of unmonitored lakes
+Meta Transfer Learning application for water temperature prediction of unmonitored lakes. 
+
 ==============================
 
+This code uses data from 2233 total lakes in the Midwestern United States to demonstrate a method for predicting water temperature at depth in situations where no temperature data is available. Method descriptions can be found in "<preprint link here>"
 
 
 
@@ -16,7 +18,6 @@ Steps to run MTL pipeline
 
 
 3. Process zipped data (code in src/data/), format for preprocessing with the following two scripts
-`cd src/data`
 `python process_zip_data.py`
 `python process_meteo_obs.py`
 
@@ -24,9 +25,28 @@ Steps to run MTL pipeline
 `python preprocess.py`
 `python preprocess_morphometry.py`
 
-5. Create metadata files (code in src/metadata)
+5. Create metadata files (code in src/metadata), must run in order
 `python calculateMetadata.py`
 `python createMetadataDiffs.py`
+`python createMetadataDiffsPB.py`
+
+6. Train source models (formatted for running on HPC, may have to customize to different HPC cluster if not on UMN MSI) (code in src/train/)
+`python job_create_source_models.py` (create HPC job files (n=145))
+`qsub /jobs/qsub_script_pgml_source.sh` (mass submit script created in previous command)
+
+7. Run feature selection scripts for metamodeling (code in src/metamodel/). Record results for use in Step 8
+`python pbmtl_feature_selection.py`
+`python pgmtl_feature_selection.py`
+
+8. Run hyperparameter optimization for metamodel build on features found in Step 7 (must manually past in code, directions in comments of below scripts). Record optimal hyperparameters for use in Step 9
+`python pbmtl_hyperparameter_search.py`
+`python pgmtl_hyperparameter_search.py`
+
+9. Using hyperparameters found in Step 8, 
+
+9. 
+
+
 
 
 
