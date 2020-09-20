@@ -21,7 +21,6 @@ sys.path.append('/home/invyz/workspace/Research/lake_monitoring/src/data')
 from pytorch_data_operations import buildLakeDataForRNNPretrain, calculate_energy,calculate_ec_loss_manylakes, transformTempToDensity, calculate_dc_loss
 from pytorch_model_operations import saveModel
 import pytorch_data_operations
-from io_operations import makeLabels, averageTrialsToFinalOutputFullData, saveFeatherFullDataWithEnergy
 import datetime
 #multiple dataloader wrapping?
 import pdb
