@@ -12,14 +12,20 @@ import torch.nn as nn
 import torch.utils.data
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.init import xavier_normal_
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.svm import SVR
-from sklearn.model_selection import cross_val_score
-from sklearn.neural_network import MLPRegressor
 from scipy.stats import spearmanr
 from joblib import dump, load
 import re
-# build models to predict which models to use for transfer learning
+
+################################################################################3
+# (Sept 2020 - Jared) - evaluate PB-MTL model by predicting best source model for each of 305 test lakes
+# Features and hyperparamters must be manually specified below 
+# (e.g. feats = ['dif_max_depth', ....]; n_estimators = 4000, etc)
+#############################################################################################################
+
+#file to save results to
+save_file_path = '../../results/pbmtl_glm_transfer_results.csv'
 
 
 
@@ -36,29 +42,45 @@ test_site_nhd = np.array(['test_nhdhr_'+x for x in test_lakes])
 
 
 
-
-feats = ['n_obs', 'obs_temp_mean', 'obs_temp_skew', 'obs_temp_kurt',
-       'obs_temp_mean_airdif', 'dif_max_depth',
+#########################################################################################
+#paste features found in "pbmtl_feature_selection.py" here
+feats = ['n_obs_su', 'obs_temp_mean', 'obs_temp_skew', 'obs_temp_kurt',
+       'ad_glm_strat_perc', 'obs_temp_mean_airdif', 'dif_max_depth',
        'dif_surface_area', 'dif_sw_mean_au', 'dif_ws_mean_au',
-       'dif_lathrop_strat', 'dif_glm_strat_perc', 'ad_glm_strat_perc','perc_dif_max_depth',
-       'perc_dif_surface_area']
+       'dif_lathrop_strat', 'dif_glm_strat_perc', 'perc_dif_max_depth',
+       'perc_dif_sqrt_surface_area']
+###################################################################################
+
+#######################################################################3
+#paste hyperparameters found in "pbmtl_hyperparameter_search.py" here
+
+n_estimators = 4000
+lr = .05
+#####################################################################
 
 
 
-train = False
+########################
+##########################
+#metamodel training code
+##########################
+#######################
+
+
+train = True #can disable if re-running but don't need to train
 if train:
-	model = GradientBoostingRegressor(n_estimators=4500,learning_rate=0.05)
+	print("Model training in progress...")
+	model = GradientBoostingRegressor(n_estimators=4000,learning_rate=0.05)
 	X = pd.DataFrame(train_df[feats])
 	y = np.ravel(pd.DataFrame(train_df['rmse']))
 
-	# model = GradientBoostingRegressor(n_estimators=3100, learning_rate=.05)
 	model.fit(X,y)
+	print("model train complete")
 	dump(model, 'metamodel_glm_RMSE_GBR.joblib') 
 
 
 
 model = load('metamodel_glm_RMSE_GBR.joblib') 
-###############################################################
 
 
 importances = model.feature_importances_
@@ -66,34 +88,15 @@ print("##Feature Importances#################")
 print(feats)
 print(importances)
 print("#####################")
-# # std = np.std([tree.feature_importances_ for tree in forest.estimators_],
-# #              axis=0)
-# indices = np.argsort(importances)[::-1]
 
-# Print the feature ranking
-# print("Feature ranking:")
-# X = X_trn
-# feats = [rmse_feats[i] for i in indices[:14]]
-# for f in range(X.shape[1]):
-#     print("%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]]))
+########################
+##########################
+# framework evaluation code
+##########################
+#######################
 
-# # Plot the feature importances of the forest
-# plt.figure()
-# plt.title("Feature importances")
-# print(feats)
-# plt.bar(range(14), importances[indices][:14],
-#        color="r", align="center")
-# plt.xticks(range(14), feats, rotation='vertical')
-# plt.xlim([-1, 14])
-# # plt.show()
-# plt.tight_layout()
-# plt.savefig("./feat_importances_glm.png")
-# sys.exit()
 
-############################################################################
-#use model to predict top GLM source model for every target lake
-################################################################################
-# test_lakes = train_lakes
+#data structs to fill
 rmse_per_lake = np.empty(test_lakes.shape[0])
 glm_rmse_per_lake = np.empty(test_lakes.shape[0])
 meta_rmse_per_lake = np.empty(test_lakes.shape[0])
@@ -103,49 +106,22 @@ glm_rmse_per_lake[:] = np.nan
 srcorr_per_lake = np.empty(test_lakes.shape[0])
 srcorr_per_lake[:] = np.nan
 meta_rmse_per_lake[:] = np.nan
-csv = ['target_id,source_id,pb-mtl_rmse,predicted_rmse,spearman,meta_rmse','n_obs', 'obs_temp_mean', 'obs_temp_skew','obs_temp_kurt',\
-       'obs_temp_mean_airdif', 'dif_max_depth', 'dif_surface_area',\
-       'dif_sw_mean_au', 'dif_ws_mean_au', 'dif_lathrop_strat','dif_glm_strat_perc', 'ad_glm_strat_perc'\
-       'perc_dif_max_depth', 'perc_dif_surface_area']
+csv = ['target_id,source_id,pb-mtl_rmse,predicted_rmse,spearman,meta_rmse']
+for feat in feats:
+	csv += ','+str(feat)
 
 
-# mean_per_k = np.empty((7, test_lakes.shape[0]))
-# mean_per_k[:] = np.nan
+#for each test lake, select source lake and record results
 for targ_ct, target_id in enumerate(test_lakes): #for each target lake
-	print("target lake ", targ_ct, ":", target_id)
-	lake_df = []
-	# if os.path.exists("../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic5"):
-	# 	lake_df = pd.read_csv("../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic5") #load metadata/rmse for model selection
-	# else:
-	# lake_df = pd.read_csv("../../metadata/diff/target_"+str(target_id)+".csv")
-	# lake_df = lake_df[np.isin(lake_df['nhd_id'], train_lakes)]
-
-	# lake_df = pd.read_csv("../../results/transfer_learning/target_"+target_id+"/resultsPGRNN_norm_all") #load metadata/rmse for model selection
-	# lake_df_res = pd.read_csv("../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic_wNew_norm2") 
-	lake_df = pd.read_feather("../../metadata/diff/target_"+ target_id +"_pball_Aug2020.feather")
-	# lake_df = lake_df[np.isin(lake_df['source_id'], train_lakes)]
+	print("predicting target lake ", targ_ct, ":", target_id)
+	lake_df = pd.read_feather("../../metadata/diffs/target_"+ target_id +".feather")
 	lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes)]
 	lake_df['site_id2'] = ['nhdhr_'+x for x in lake_df['site_id'].values] 
-
-	# lake_df_res = lake_df_res[np.isin(lake_df_res['source_id'], train_lakes)]
-
 	targ_result_df = result_df[np.isin(result_df['target_id'], 'test_nhdhr_'+target_id)] 
-
+	pdb.set_trace()
 	lake_df = lake_df.merge(targ_result_df, left_on='site_id2', right_on='source_id')
-	# lake_df = pd.concat([lake_df[['nhd_id', 'ad_lat', 'ad_SDF', 'ad_surface_area','ad_max_depth','ad_long','ad_k_d']], lake_df_res['rmse']], axis=1)
-	# lake_df = pd.concat([lake_df['nhd_id'], lake_df[rmse_feats], lake_df_res['rmse']], axis=1)
 
-	# lake_df = pd.read_csv("../../metadata/diff/target_"+target_id+".csv")#load metadata/rmse for model selection
-	# lake_df = pd.read_csv("../../results/transfer_learning/target_"+target_id+"/resultsPGRNN_CV") #load metadata/rmse for model selection
-	# X = pd.DataFrame(lake_df[['geo','tempdtw','surf_area','max_depth','lat','long','k_d']])
-	# X = pd.DataFrame(lake_df[['lat', 'SDF', 'surf_area','max_depth','long','k_d']])
-	# X = pd.DataFrame(lake_df[['ad_lat', 'ad_SDF', 'ad_surface_area','ad_max_depth','ad_long','ad_k_d']])
 	X = pd.DataFrame(lake_df[feats])
-	# X = pd.DataFrame(lake_df[['SDF','lat','surf_area','max_depth','long','k_d', 'canopy']])
-	# y = pd.DataFrame(lake_df['rmse_improve'])
-
-	y_pred = []
-	top_ids = []
 
 	y_pred = model.predict(X)
 	lake_df['rmse_pred'] = y_pred
@@ -168,36 +144,17 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 	rmse_per_lake[targ_ct] = y_act_top
 
 	best_predicted_rmse = lake_df.iloc[0]['rmse_pred']
-	# lake_df = lake_df[lake_df['rmse_pred'] < lowest_rmse+rel_cut]
 	csv.append(",".join(['nhdhr'+str(target_id), 'nhdhr'+str(best_predicted), str(y_act_top), str(best_predicted_rmse),str(srcorr_per_lake[targ_ct]),str(meta_rmse_per_lake[targ_ct]) ] + [str(x) for x in lake_df.iloc[0][feats].values]))
 
-
-# with open("../../results/transfer_learning/rf_testset.csv",'a') as file:
-# 	for line in test_lake_csv:
-# 		file.write(line)
-# 		file.write('\n')
+#print medians
 print("median meta test RMSE: ",np.median(meta_rmse_per_lake))
 print("median spearman RMSE: ",np.median(srcorr_per_lake))
 print("median test RMSE: ",np.median(rmse_per_lake))
-# print("mean test RMSE: ",rmse_per_testlake.mean())
-# 
 
-# with open('glm_transfer_pball_test_lakes_wRange.csv','w') as file:
-with open('pbmtl_glm_transfer_results_Sept8.csv','w') as file:
+#write results to file
+with open(save_file_path,'w') as file:
     for line in csv:
         file.write(line)
         file.write('\n')
 
 
-# df['rmse_pred'] = y_pred
-# df = df.sort_values(by=['rmse_pred'])
-# print(df)
-#assess performance of the model
-
-
-# scores = []
-# kfold = KFold(n_splits=10, shuffle=True, random_state=42)
-# for i, (train, test) in enumerate(kfold.split(X, y)):
-# 	model.fit(X.iloc[train,:], y.iloc[train,:])
-# 	score = model.score(X.iloc[test,:], y.iloc[test,:])
-# 	scores.append(score)
