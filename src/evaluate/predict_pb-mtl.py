@@ -58,7 +58,7 @@ lr = .05
 #######################
 
 
-train = False #can disable if re-running but don't need to train
+train = True #can disable if re-running but don't need to train
 if train:
 	print("Model training in progress...")
 	model = GradientBoostingRegressor(n_estimators=4000,learning_rate=0.05)
