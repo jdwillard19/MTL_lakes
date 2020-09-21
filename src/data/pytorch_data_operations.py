@@ -81,6 +81,7 @@ def buildLakeDataForRNN_manylakes_finetune2(lakename, data_dir, seq_length, n_fe
         n_profiles = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0].shape[0] #n nonzero columns
         n_profiles_to_zero = n_profiles - sparseCustom #n nonzero columns
         if n_profiles_to_zero < 0:
+            pdb.set_trace()
             print("not enough training obs")
             return((sparseCustom,None,None,None,None,None,None,None,None))
         profiles_ind = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0] #nonzero columns
