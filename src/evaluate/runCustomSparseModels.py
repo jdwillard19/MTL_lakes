@@ -14,8 +14,8 @@ import math
 import sys
 import re
 import os
-sys.path.append('../../data')
-sys.path.append('../../models')
+sys.path.append('../data')
+sys.path.append('../models')
 sys.path.append('/home/invyz/workspace/Research/lake_monitoring/src/data')
 from pytorch_data_operations import buildLakeDataForRNNPretrain, calculate_energy,calculate_ec_loss_manylakes, transformTempToDensity, calculate_dc_loss
 from pytorch_model_operations import saveModel
