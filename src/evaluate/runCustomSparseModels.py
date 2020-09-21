@@ -97,6 +97,8 @@ save = True
 
 #for each test lake
 for lake_ct, lakename in enumerate(test_lakes):
+    if os.path.exists("../../results/"+lakename+"/sparseModelResults.csv"):
+        continue
     print("(",lake_ct,"/",len(test_lakes),"): ", lakename)
     data_dir = "../../data/processed/"+lakename+"/"
 
