@@ -114,10 +114,10 @@ for lake_ct, lakename in enumerate(test_lakes):
         avg_over_seed = np.empty((len(seeds)))
         avg_over_seed[:] = np.nan
         for seed_ct, seed in enumerate(seeds):
-            if not os.path.exists("../../models/"+lakename+"/PGRNN_basic_normAll_pball_" + str(n_prof) + "_" + str(seed)):
+            if not os.path.exists("../../models/"+lakename+"/PGRNN_sparse_" + str(n_prof) + "_" + str(seed)):
                 print('not enough observations')
                 continue
-            load_path = "../../models/"+lakename+"/PGRNN_basic_normAll_pball_" + str(n_prof) + "_" + str(seed)
+            load_path = "../../models/"+lakename+"/PGRNN_sparse_" + str(n_prof) + "_" + str(seed)
 
             ###############################
             # data preprocess
