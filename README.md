@@ -42,9 +42,16 @@ Steps to run MTL pipeline
 `python pbmtl_hyperparameter_search.py`
 `python pgmtl_hyperparameter_search.py`
 
-9. Using hyperparameters found in Step 8, 
+9.Train the metamodel using the features found in Step 7 and hyperparameters found in Step 8 (must manually past in code, directions in comments of below scripts) (code in src/metamodel/)
+`python pbmtl_train_metamodel.py`
+`python pgmtl_train_metamodel.py`
 
-9. 
+10. Using hyperparameters found in Step 8, Experiments 1 and 3 can now be performed using the following scripts (code in src/evaluate/)
+`python predict_pb-mtl.py`
+
+
+11. For Experiment 2, build additional PGDL models with different levels of sparsify (formatted for running on HPC, may have to customize to different HPC cluster if not on UMN MSI) (code in src/train/))
+`python job_create_`
 
 
 
@@ -69,9 +76,9 @@ Project Organization
     │
     │
     ├── src                <- Source code for use in this project.
-    │   ├── __init__.py    <- Makes src a Python module
-    │   │
-    │   ├── data           <- Scripts to download, preprocess, or operate on data
+        ├── __init__.py    <- Makes src a Python module
+        │
+        ├── data           <- Scripts to download, preprocess, or operate on data
             |
             ├── pull_data.r <- Pull raw data from Sciencebase
             ├── process_zip_data.py <- process zipped Sciencebase data
@@ -79,10 +86,28 @@ Project Organization
             ├── preprocess.py <- main preprocessing script
             └── preprocess_morphometry.py <- parse lake geometries for modeling
     
-    │   │
-    │   ├── metadata         <- Scripts to create metadata for metamodel 
-    |   |   ├── runSourceModelsOnAllSources.py - create performance metadata
+        ├── train           <- Scripts to train PGDL models
+            |
+            ├── job_create_source_models.py - create HPC jobs for source PGDL models
+            ├── train_source_model.py - trains a source PGDL for a given lake
+            ├── job_create_pgml_sparse.py - create HPC jobs for PGDL w/sparse data
+            └── train_PGDL_custom_sparse.py - trains a source PGDL for a given lake on varied sparse data
+        | 
+        ├── metadata         <- Scripts to create metadata for metamodel 
+            |
+            ├── runSourceModelsOnAllSources.py - create performance metadata
+            ├── calculateMetadata.py - record metadata for each lake
+            ├── createMetadataDiffs.py - record metadata differences between lakes
+            └── createMetadataDiffsPB.py - record metadata differences between lakes for PB-MTL training
+
     models to make
+        ├── metamodel         <- Scripts to build metamodel  
+    |   |   ├── pbmtl_feature_selection.py - feature selection for pb-mtl
+    |   |   ├── pgmtl_feature_selection.py - feature selection for pg-mtl
+    |   |   ├── pbmtl_hyperparameter_search.py - find params for pb-mtl
+    |   |   ├── pgmtl_hyperparameter_search.py - find params for pg-mtl
+    |   |   ├── pbmtl_train_metamodel.py - train pb-mtl metamodel
+    |   |   └── pgmtl_train_metamodel.py - train pg-mtl metamodel
     │   │
     │   ├── models         <- Scripts to train models and then use trained models to make
     │   │   │                 predictions
