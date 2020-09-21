@@ -17,22 +17,23 @@ import os
 sys.path.append('../../data')
 sys.path.append('../../models')
 sys.path.append('/home/invyz/workspace/Research/lake_monitoring/src/data')
-# from data_operations import calculatePhysicalLossDensityDepth
 from pytorch_data_operations import buildLakeDataForRNNPretrain, calculate_energy,calculate_ec_loss_manylakes, transformTempToDensity, calculate_dc_loss
 from pytorch_model_operations import saveModel
 import pytorch_data_operations
-from io_operations import makeLabels, averageTrialsToFinalOutputFullData, saveFeatherFullDataWithEnergy
 import datetime
 #multiple dataloader wrapping?
 import pdb
 from torch.utils.data import DataLoader
-from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs, preprocessForTargetLake
+from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
+
+####################################################################################################3
+# (Sept 2020 - Jared) - this script runs all the sparse PGDL models for target lakes and records RMSE
+###########################################################################################################
+
+
 #script start
 currentDT = datetime.datetime.now()
 print(str(currentDT))
-####################################################3
-#  pretrain script, takes lakename as required command line argument
-###################################################33
 
 #enable/disable cuda 
 use_gpu = True 
@@ -42,57 +43,23 @@ torch.set_printoptions(precision=10)
 ids = pd.read_csv('../../../metadata/pball_site_ids.csv', header=None)
 ids = ids[0].values
 glm_all_f = pd.read_csv("../../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
-# result_df = pd.read_csv("./PGML_T_pball_results.csv")
 
-# train_df = pd.read_feather("../../../results/transfer_learning/glm/train_rmses_pball.feather")
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
 test_lakes = ids[~np.isin(ids, train_lakes)]
-#collect command line args
-# target_id = "1102086"
-# lakes = ['2723871', '1099432', '1101504']
-
-# target_id = "1097324"
-# lakes = ['2723765', '1101942', '1099432'] 
-# target_id = "13293262"
-# lakes = ['120052351', '9022741', '1101942']
-
-# #collect command line args
 
 
-
-#preprocess if needed
-# preprocessForTargetLake(target_id, addDirRemove=1)
-
-#find similar lakes
-# lakes = getSimilarLakes(target_id, method='geotemp')
+#to iterate through
 n_profiles = [1,2,5,10,15,20,25,30,35,40,45,50]
 seeds = [0,1,2,3,4]
 
 
-
+#monitor which sites do not have "x" observations (no_x below)
 no_50 = []
 no_45 = []
 no_40 = []
 no_35 = []
 no_30 = []
 no_25 = []
-
-
-
-
-# target_id = "2723871"
-# lakes = ["1102086" ,"1101504", "1099432"] #2723871
-
-# target_bool = False
-# target_id = None
-# if target_bool:
-#     target_id = target_id
-
-
-
-
-
-
 
 ### debug tools
 debug_train = False
@@ -102,22 +69,20 @@ pretrain = False
 save = True
 save_pretrain = True
 
-unsup_loss_cutoff = 40
-dc_unsup_loss_cutoff = 1e-3
-dc_unsup_loss_cutoff2 = 1e-2
-#############################################################
-#training loop
-####################################################################
-n_hidden = 20 #fixed
-train_epochs = 10000
-pretrain_epochs = 10000
-# train_epochs = 1
-# pretrain_epochs = 1
-
 #####################3
 #params
 ###########################33
+
+unsup_loss_cutoff = 40
+dc_unsup_loss_cutoff = 1e-3
+dc_unsup_loss_cutoff2 = 1e-2
+n_hidden = 20 #fixed
+train_epochs = 10000
+pretrain_epochs = 10000
+
+
 n_ep = pretrain_epochs  #number of epochs
+
 if debug_train or debug_end:
     n_ep = 10
 first_save_epoch = 0
@@ -130,43 +95,10 @@ n_features = 8  #number of physical drivers
 win_shift = 175 #how much to slide the window on training set each time
 save = True 
 
-
-
-###############################
-# data preprocess
-##################################
-#create train and test sets
-
-
-
-
-
-#####################################################################################
-####################################################3
-# fine tune
-###################################################33
-##########################################################################################33
-
-#####################
-#params
-###########################
-n_ep = train_epochs  #number of epochs
-if debug_end:
-    n_ep = 10
-first_save_epoch = 0
-patience = 1000
-epoch_since_best = 0
-ec_lambda = .01
-dc_lambda = 1.
-lambda1 = 0
-win_shift = 175 #how much to slide the window on training set each time
+#for each test lake
 for lake_ct, lakename in enumerate(test_lakes):
-    if lake_ct < 22:
-        continue
-    # if lakename in ['69884058']:
-    #     continue
     print("(",lake_ct,"/",len(test_lakes),"): ", lakename)
-    data_dir = "../../data/processed/lake_data/"+lakename+"/"
+    data_dir = "../../data/processed/"+lakename+"/"
 
 
 
@@ -182,10 +114,10 @@ for lake_ct, lakename in enumerate(test_lakes):
         avg_over_seed = np.empty((len(seeds)))
         avg_over_seed[:] = np.nan
         for seed_ct, seed in enumerate(seeds):
-            if not os.path.exists("../../../models/single_lake_models/"+lakename+"/PGRNN_basic_normAll_pball_" + str(n_prof) + "_" + str(seed)):
+            if not os.path.exists("../../models/"+lakename+"/PGRNN_basic_normAll_pball_" + str(n_prof) + "_" + str(seed)):
                 print('not enough observations')
                 continue
-            load_path = "../../../models/single_lake_models/"+lakename+"/PGRNN_basic_normAll_pball_" + str(n_prof) + "_" + str(seed)
+            load_path = "../../models/"+lakename+"/PGRNN_basic_normAll_pball_" + str(n_prof) + "_" + str(seed)
 
             ###############################
             # data preprocess
@@ -197,6 +129,7 @@ for lake_ct, lakename in enumerate(test_lakes):
                                                win_shift = win_shift, begin_loss_ind = begin_loss_ind, 
                                                outputFullTestMatrix=False, 
                                                allTestSeq=False, sparseCustom=n_prof, randomSeed=seed) 
+            #if error code is returned (trn data as int), skip and record id
             if isinstance(trn_data, int):
                 target_id = lakename
                 if trn_data == 25:
@@ -219,19 +152,7 @@ for lake_ct, lakename in enumerate(test_lakes):
                     continue
             u_depths = np.unique(all_data[:,0,0])
             n_test_dates = unique_tst_dates.shape[0]
-                    # trn_data = tst_data
             batch_size = trn_data.size()[0]
-            ####################
-            #model params (inherited from pre-training)
-            ########################
-            # n_hidden = 8 #number of hidden units in LSTM
-            # batch_size = 600
-            # yhat_batch_size = n_depths*1
-            # grad_clip = 1.0 #how much to clip the gradient 2-norm in training
-            # lambda1 = 0.00 #magnitude hyperparameter of l1 loss
-            # ec_lambda = 0.0 #magnitude hyperparameter of ec loss
-            # ec_threshold = 36 #anything above this far off of energy budget closing is penalized
-
 
             #Dataset classes
             class TemperatureTrainDataset(Dataset):
@@ -411,21 +332,6 @@ for lake_ct, lakename in enumerate(test_lakes):
                     print(n_prof," obs ",lakename+" rmse=" + str(mat_rmse))
                     avg_over_seed[seed_ct] = mat_rmse
 
-
-                                #calculate energy at each timestep
-                    # output_torch = torch.from_numpy(outputm_npy).float()
-                    # if use_gpu:
-                    #     output_torch = output_torch.cuda()
-                    # energies = calculate_energy(output_torch, depth_areas, use_gpu)
-                    # energies = energies.cpu().numpy()
-                    # if save: 
-                    #     saveTemperatureMatrix(outputm_npy, labelm_npy, unique_tst_dates_target, source_id,target_id, 
-                    #                           save_path=save_output_path, label_path = save_label_path)
-
-                #############################
-                #get metadata differences (independent vars in model selection regression)
-                ##############################
-
                     row_vals = [lakename, n_prof, seed, mat_rmse]
                     row_vals_str = [str(i) for i in row_vals]
 
@@ -434,11 +340,10 @@ for lake_ct, lakename in enumerate(test_lakes):
         print("\n**\n",n_prof," obs ",lakename+" AVERAGE RMSE=" + str(avg_over_seed.mean()), "\n**\n")
 
 
-    if not os.path.exists("../../../results/single_lake_outputs/"+lakename):
-        os.mkdir("../../../results/single_lake_outputs/"+lakename)
+    if not os.path.exists("../../results/"+lakename):
+        os.mkdir("../../results/"+lakename)
 
-    with open("../../../results/single_lake_outputs/"+lakename+"/sparseModelResults_July2020.csv",'w') as file:
-        # print("saving to ../../../results/transfer_learning/target_"+target_id+"/resultsPGRNNbasic6")
+    with open("../../results/"+lakename+"/sparseModelResults.csv",'w') as file:
         for line in csv_targ:
             file.write(line)
             file.write('\n')
