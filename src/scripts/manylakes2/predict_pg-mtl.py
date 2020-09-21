@@ -37,9 +37,8 @@ mat_csv.append(",".join(["target_id","source_id","glm_rmse","rmse","source_obser
                          "mean_source_observation_temp","diff_max_depth",'diff_surface_area', 'diff_RH_mean_autumn', 'diff_lathrop_strat','dif_glm_strat_perc',\
                          'percent_diff_max_depth', 'percent_diff_surface_area','perc_dif_sqrt_surface_area']))
 
-feats = ['n_obs', 'obs_temp_mean', 'dif_max_depth', 'dif_surface_area',
-       'dif_rh_mean_au', 'dif_lathrop_strat', 'dif_glm_strat_perc',
-       'perc_dif_max_depth', 'perc_dif_surface_area',
+feats = ['n_obs_sp', 'n_obs_su', 'dif_max_depth', 'dif_surface_area',
+       'dif_glm_strat_perc', 'perc_dif_max_depth', 'perc_dif_surface_area',
        'perc_dif_sqrt_surface_area']
 # feats = feats[ranks == 1]
 train = False

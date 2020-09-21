@@ -11,6 +11,9 @@ from joblib import dump, load
 
 #file to save model  to
 save_file_path = '../../models/metamodel_glm_RMSE_GBR.joblib'
+
+
+#load training data
 train_df = pd.read_feather("../../results/glm_transfer/glm_meta_train_data.feather")
 
 
@@ -41,7 +44,7 @@ lr = .05
 
 
 print("Model training in progress...")
-model = GradientBoostingRegressor(n_estimators=4000,learning_rate=0.05)
+model = GradientBoostingRegressor(n_estimators=n_estimators,learning_rate=lr)
 X = pd.DataFrame(train_df[feats])
 y = np.ravel(pd.DataFrame(train_df['rmse']))
 

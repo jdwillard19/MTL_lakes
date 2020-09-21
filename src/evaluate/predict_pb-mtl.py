@@ -17,6 +17,8 @@ import re
 #file to save results to
 save_file_path = '../../results/pbmtl_glm_transfer_results.csv'
 
+#path to load metamodel from
+model_path = "'../../models/metamodel_glm_RMSE_GBR.joblib'"
 
 
 ids = pd.read_csv('../../metadata/pball_site_ids.csv', header=None)
@@ -42,43 +44,8 @@ feats = ['n_obs_su', 'obs_temp_mean', 'obs_temp_skew', 'obs_temp_kurt',
        'perc_dif_sqrt_surface_area']
 ###################################################################################
 
-#######################################################################3
-#paste hyperparameters found in "pbmtl_hyperparameter_search.py" here
-
-n_estimators = 4000
-lr = .05
-#####################################################################
-
-
-
-########################
-##########################
-#metamodel training code
-##########################
-#######################
-
-
-train = True #can disable if re-running but don't need to train
-if train:
-	print("Model training in progress...")
-	model = GradientBoostingRegressor(n_estimators=4000,learning_rate=0.05)
-	X = pd.DataFrame(train_df[feats])
-	y = np.ravel(pd.DataFrame(train_df['rmse']))
-
-	model.fit(X,y)
-	print("model train complete")
-	dump(model, 'metamodel_glm_RMSE_GBR.joblib') 
-
-
-
-model = load('metamodel_glm_RMSE_GBR.joblib') 
-
-
-importances = model.feature_importances_
-print("##Feature Importances#################")
-print(feats)
-print(importances)
-print("#####################")
+#load metamodel
+model = 
 
 ########################
 ##########################
