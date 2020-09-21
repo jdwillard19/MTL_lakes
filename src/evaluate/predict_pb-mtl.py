@@ -107,10 +107,9 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 	print("predicting target lake ", targ_ct, ":", target_id)
 	lake_df = pd.read_feather("../../metadata/diffs/target_nhdhr_"+ target_id +".feather")
 	lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes_wp)]
-	lake_df['site_id2'] = ['nhdhr_'+x for x in lake_df['site_id'].values] 
 	targ_result_df = result_df[np.isin(result_df['target_id'], 'test_nhdhr_'+target_id)] 
 	pdb.set_trace()
-	lake_df = lake_df.merge(targ_result_df, left_on='site_id2', right_on='source_id')
+	lake_df = lake_df.merge(targ_result_df, left_on='site_id', right_on='source_id')
 
 	X = pd.DataFrame(lake_df[feats])
 
