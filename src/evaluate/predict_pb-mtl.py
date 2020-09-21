@@ -45,7 +45,7 @@ feats = ['n_obs_su', 'obs_temp_mean', 'obs_temp_skew', 'obs_temp_kurt',
 ###################################################################################
 
 #load metamodel
-model = 
+model = load(model_path)
 
 ########################
 ##########################
