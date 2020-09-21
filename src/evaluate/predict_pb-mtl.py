@@ -18,7 +18,7 @@ import re
 save_file_path = '../../results/pbmtl_glm_transfer_results.csv'
 
 #path to load metamodel from
-model_path = "'../../models/metamodel_glm_RMSE_GBR.joblib'"
+model_path = "../../models/metamodel_glm_RMSE_GBR.joblib"
 
 
 ids = pd.read_csv('../../metadata/pball_site_ids.csv', header=None)
