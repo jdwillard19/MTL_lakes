@@ -57,7 +57,7 @@ lr = .05
 #######################
 
 
-train = True #can disable if re-running but don't need to train
+train = False #can disable if re-running but don't need to train
 if train:
 	print("Model training in progress...")
 	model = GradientBoostingRegressor(n_estimators=4000,learning_rate=0.05)
@@ -104,7 +104,7 @@ for feat in feats:
 #for each test lake, select source lake and record results
 for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 	print("predicting target lake ", targ_ct, ":", target_id)
-	lake_df = pd.read_feather("../../metadata/diffs/target_"+ target_id +".feather")
+	lake_df = pd.read_feather("../../metadata/diffs/target_nhdhr_"+ target_id +".feather")
 	lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes)]
 	lake_df['site_id2'] = ['nhdhr_'+x for x in lake_df['site_id'].values] 
 	targ_result_df = result_df[np.isin(result_df['target_id'], 'test_nhdhr_'+target_id)] 
