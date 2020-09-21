@@ -26,6 +26,7 @@ train_df = pd.read_feather("../../results/glm_transfer/glm_meta_train_data.feath
 train_site_nhd = np.array(['test_nhdhr_'+x for x in train_df['site_id'].values])
 result_df = pd.read_csv("../../results/glm_transfer/RMSE_transfer_test_extended_glm.csv")
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
+train_lakes_wp = np.unique(glm_all_f['target_id'].values) #with prefix
 n_lakes = len(train_lakes)
 test_lakes = ids[~np.isin(ids, train_lakes)]
 test_site_nhd = np.array(['test_nhdhr_'+x for x in test_lakes])
@@ -105,7 +106,7 @@ for feat in feats:
 for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 	print("predicting target lake ", targ_ct, ":", target_id)
 	lake_df = pd.read_feather("../../metadata/diffs/target_nhdhr_"+ target_id +".feather")
-	lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes)]
+	lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes_wp)]
 	lake_df['site_id2'] = ['nhdhr_'+x for x in lake_df['site_id'].values] 
 	targ_result_df = result_df[np.isin(result_df['target_id'], 'test_nhdhr_'+target_id)] 
 	pdb.set_trace()
