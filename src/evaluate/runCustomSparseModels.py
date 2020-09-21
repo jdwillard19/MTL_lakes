@@ -40,9 +40,9 @@ use_gpu = True
 torch.backends.cudnn.benchmark = True
 torch.set_printoptions(precision=10)
 # sources = pd.read_csv('pgdtl_rmse_pball_sources.csv')
-ids = pd.read_csv('../../../metadata/pball_site_ids.csv', header=None)
+ids = pd.read_csv('../../metadata/pball_site_ids.csv', header=None)
 ids = ids[0].values
-glm_all_f = pd.read_csv("../../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
+glm_all_f = pd.read_csv("../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
 
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
 test_lakes = ids[~np.isin(ids, train_lakes)]
