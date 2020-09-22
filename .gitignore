@@ -87,7 +87,13 @@ target/
 
 #large output files
 /results/outputs/
+/results/transfer_learning/
 
+#hdc jobs
+/src/train/jobs/
+/src/evaluate/*.stdout
+*.stderr
+*.stdout
 # Mac OS-specific storage files
 .DS_Store
 /.project
