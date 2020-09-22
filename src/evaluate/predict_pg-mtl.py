@@ -45,7 +45,7 @@ model = load(model_path)
 #csv to write to
 mat_csv = ["target_id,source_id,meta_rmse,spearman,pb0_rmse,pgmtl_rmse"]
 for feat in feats:
-    csv[0] = csv[0] + ','+str(feat)
+    mat_csv[0] = mat_csv[0] + ','+str(feat)
 
 
 #data structures to fill
