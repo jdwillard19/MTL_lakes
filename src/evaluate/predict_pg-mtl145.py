@@ -31,6 +31,7 @@ k = 145
 output_to_file = True
 
 save_file_path = "../../results/pgmtl_results_all_source.csv"
+save_file_path_summ = "../../results/pgmtl_results_all_source_summary.csv"
 
 #########################################################################################
 #paste features found in "pbmtl_feature_selection.py" here
@@ -45,7 +46,7 @@ model_path = '../../models/metamodel_pgdl_RMSE_GBR.joblib'
 model = load(model_path)
 
 #csv to write to
-mat_csv = ["target_id,source_id,meta_rmse,spearman,pb0_rmse,pgmtl_rmse"]
+mat_csv = ["target_id,source_id,pb0_rmse,pgmtl_rmse"]
 for feat in feats:
     mat_csv[0] = mat_csv[0] + ','+str(feat)
 
@@ -58,11 +59,10 @@ srcorr_per_lake = np.empty(test_lakes.shape[0])
 
 meta_rmse_per_lake = np.empty(test_lakes.shape[0])
 med_meta_rmse_per_lake = np.empty(test_lakes.shape[0])
-rmse_per_lake[:] = np.nan
 glm_rmse_per_lake[:] = np.nan
 meta_rmse_per_lake[:] = np.nan
 csv = []
-csv.append('target_id,rmse,rmse_pred,spearman,glm_rmse')
+csv.append('target_id,spearman,meta_rmse')
 
 
 #where to output files
@@ -263,8 +263,10 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 
     # print("Total rmse=", mat_rmse)
     # srcorr_per_lake[targ_ct]
+    pdb.set_trace()
     meta_rmse_per_lake[targ_ct] = np.median(np.sqrt(((y_pred - y_act) ** 2).mean()))
     srcorr_per_lake[targ_ct] = spearmanr(pred_rmse_per_source_per_lake[:,targ_ct], rmse_per_source_per_lake[:,targ_ct]).correlation
+    csv.append(",".join(["nhdhr_"+target_id,str(srcorr_per_lake[targ_ct]),str(meta_rmse_per_lake[targ_ct])]))
 
 
 
@@ -274,6 +276,11 @@ with open(save_file_path,'w') as file:
         file.write(line)
         file.write('\n')
 
+
+with open(save_file_path_summ,'w') as file:
+    for line in csv:
+        file.write(line)
+        file.write('\n')
 
 
 
