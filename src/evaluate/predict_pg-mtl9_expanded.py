@@ -73,8 +73,8 @@ err_per_source = np.empty((9,len(test_lakes)))
 for targ_ct, target_id in enumerate(test_lakes): #for each target lake
     print("target lake ",targ_ct,"/",len(test_lakes),": ", target_id)
     lake_df = pd.DataFrame()
+    target_id = re.search('nhdhr_(.*)', target_id).group(1)
     lake_id = target_id
-    lake_id = re.search('nhdhr_(.*)', lake_id).group(1)
 
 
     lake_df = pd.read_feather("../../metadata/diffs/target_nhdhr_"+lake_id+".feather")
