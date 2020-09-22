@@ -159,7 +159,7 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 
     for i, source_id in enumerate(top_ids): 
         #for each top id
-
+        source_id = re.search('nhdhr_(.*)', source_id).group(1)
         #load source model
         load_path = "../../models/"+source_id+"/PGRNN_source_model_0.7"
         n_hidden = torch.load(load_path)['state_dict']['out.weight'].shape[1]
