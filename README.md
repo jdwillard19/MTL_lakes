@@ -2,7 +2,7 @@ Meta Transfer Learning application for water temperature prediction of unmonitor
 
 ==============================
 
-This code uses data from 2233 total lakes in the Midwestern United States to demonstrate a method for predicting water temperature at depth in situations where no temperature data is available. Method descriptions can be found in "<preprint link here>"
+This code uses data from 2233 total lakes in the Midwestern United States to demonstrate a method for predicting water temperature at depth in situations where no temperature data is available. Method descriptions can be found in ("INSERT PREPRINT HERE")
 
 
 
