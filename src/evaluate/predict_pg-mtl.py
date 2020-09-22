@@ -21,14 +21,13 @@ import re
 metadata = pd.read_feather("../../metadata/lake_metadata_full.feather")
 metadata.set_index('site_id', inplace=True)
 glm_all_f = pd.read_csv("../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
+train_df = pd.read_feather("../../results/glm_transfer/glm_meta_train_rmses.feather")
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
 n_lakes = len(train_lakes)
 test_lakes = ids[~np.isin(ids, train_lakes)]
-assert len(test_lakes) == 305
 k = 1
 output_to_file = True
 
-save_file_path = "../../results/pgmtl_results_single_source.csv"
 
 #########################################################################################
 #paste features found in "pbmtl_feature_selection.py" here
@@ -62,12 +61,6 @@ csv = []
 csv.append('target_id,rmse,rmse_pred,spearman,glm_rmse')
 
 
-#where to output files
-output_path = "../../results/outputs/"
-if not os.path.exists(output_path):
-    os.mkdir(output_path)
-
-
 err_per_source = np.empty((145,len(test_lakes)))
 for targ_ct, target_id in enumerate(test_lakes): #for each target lake
     print(str(targ_ct),'/',len(test_lakes),':',target_id)
@@ -77,10 +70,9 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
     lake_df_res = lake_df_res[lake_df_res.source_id != 'source_id']
 
     lake_df = pd.read_feather("../../metadata/diffs/target_nhdhr_"+lake_id+".feather")
-    lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes_wp)]
+    lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes)]
     lake_df_res = lake_df_res[np.isin(lake_df_res['source_id'], train_lakes)]
-    lake_df_res['source_id2'] = ['nhdhr_'+str(x) for x in lake_df_res['source_id'].values]
-    lake_df = pd.merge(left=lake_df, right=lake_df_res.astype('object'), left_on='site_id', right_on='source_id2')
+    lake_df = pd.merge(left=lake_df, right=lake_df_res.astype('object'), left_on='site_id', right_on='source_id')
     X = pd.DataFrame(lake_df[feats])
 
 
@@ -261,25 +253,33 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
         label_df.rename(columns={'index': 'depth'})
 
         assert np.isfinite(np.array(output_df.values[:,1:],dtype=np.float32)).all(), "nan output"
-        lake_output_path = output_path+target_id
-        if not os.path.exists(lake_output_path):
-            os.mkdir(lake_output_path)
-        output_df.to_feather(lake_output_path"/PGMTL_outputs.feather")
+        output_df.to_feather("mtl_outputs_July2020/target_nhdhr_"+target_id+"_PGMTL_outputs.feather")
+        label_df.to_feather("labels/nhdhr_"+target_id+"_labels.feather")
         
     loss_output = total_output_npy[~np.isnan(label_mats)]
     loss_label = label_mats[~np.isnan(label_mats)]
     mat_rmse = np.sqrt(((loss_output - loss_label) ** 2).mean())
+    # mat_csv.append(",".join(["nhdhr_"+target_id,"9 MODEL ENSEMBLE",str(mat_rmse)] + ['NA' for x in lake_df.iloc[i][feats].values]))
+    # mat_csv.append(",".join(["nhdhr_"+target_id,"9 MODEL ENSEMBLE",str(mat_rmse)] + ['NA' for x in lake_df.iloc[i][feats].values]))
 
     print("Total rmse=", mat_rmse)
     spcorr = srcorr_per_lake[targ_ct]
     rmse_per_lake[targ_ct] = mat_rmse
+
+    # if ind_rmses.mean() - mat_rmse > most_imp_diff:
+    #   most_imp_diff = ind_rmses.mean() - mat_rmse
+    #   most_imp_site_id = target_id
+    #   most_imp_total_rmse = mat_rmse
+    #   most_imp_ind_rmses = ind_rmses
+    #   most_imp_source_ids = top_ids
+
 
     glm_rmse = float(metadata.loc[target_id].glm_uncal_rmse_full)
     csv.append(",".join([str(target_id), str(mat_rmse)]))
 
 
 
-with open(save_file_path,'w') as file:
+with open('pgdlmtl_singlesource_result_Aug21.csv','w') as file:
     for line in mat_csv:
         file.write(line)
         file.write('\n')
