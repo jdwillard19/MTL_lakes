@@ -1,11 +1,9 @@
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import KFold
 import pdb
 import sys
 import os
-sys.path.append('../../data')
+sys.path.append('../data')
 from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
 import torch
 import torch.nn as nn
