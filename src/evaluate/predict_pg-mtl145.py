@@ -263,9 +263,12 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 
     # print("Total rmse=", mat_rmse)
     # srcorr_per_lake[targ_ct]
-    pdb.set_trace()
+    y_pred = pred_rmse_per_source_per_lake[:,targ_ct]
+    y_act = rmse_per_source_per_lake[:,targ_ct]
     meta_rmse_per_lake[targ_ct] = np.median(np.sqrt(((y_pred - y_act) ** 2).mean()))
-    srcorr_per_lake[targ_ct] = spearmanr(pred_rmse_per_source_per_lake[:,targ_ct], rmse_per_source_per_lake[:,targ_ct]).correlation
+    srcorr_per_lake[targ_ct] = spearmanr(y_pred, y_act).correlation
+    print("meta RMSE: ", meta_rmse_per_lake[targ_ct])
+    print("srcorr: ", srcorr_per_lake[targ_ct])
     csv.append(",".join(["nhdhr_"+target_id,str(srcorr_per_lake[targ_ct]),str(meta_rmse_per_lake[targ_ct])]))
 
 
