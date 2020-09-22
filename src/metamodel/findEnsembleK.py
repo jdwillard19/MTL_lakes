@@ -1,19 +1,15 @@
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import KFold, LeaveOneOut
 import pdb
 import sys
-sys.path.append('../../data')
+sys.path.append('../data')
 from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
 import torch
 import torch.nn as nn
 import torch.utils.data
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.init import xavier_normal_
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from similarity_calc import getSimilarLakes
-from sklearn.svm import SVR
+from sklearn.ensemble import GradientBoostingRegressor
 import math
 # build models to predict which models to use for transfer learning
 # method = 'linear'
