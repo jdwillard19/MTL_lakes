@@ -74,8 +74,10 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
     print("target lake ",targ_ct,"/",len(test_lakes),": ", target_id)
     lake_df = pd.DataFrame()
     lake_id = target_id
+    lake_id = re.search('nhdhr_(.*)', lake_id).group(1)
 
-    lake_df = pd.read_feather("../../metadata/diffs/target_"+lake_id+".feather")
+
+    lake_df = pd.read_feather("../../metadata/diffs/target_nhdhr_"+lake_id+".feather")
     lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes_wp)]
     X = pd.DataFrame(lake_df[feats])
 
