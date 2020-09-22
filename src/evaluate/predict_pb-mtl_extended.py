@@ -50,10 +50,10 @@ model = load(model_path)
 #######################
 
 #csv header line
-csv = [ 'target_id,source_id,predicted_rmse , n_obs ,  obs_temp_mean ,  obs_temp_skew , obs_temp_kurt ,\
-        obs_temp_mean_airdif ,  dif_max_depth ,  dif_surface_area ,\
-        dif_sw_mean_au ,  dif_ws_mean_au ,  dif_lathrop_strat , dif_glm_strat_perc ,  ad_glm_strat_perc, \
-        perc_dif_max_depth ,  perc_dif_surface_area' ]
+csv = [ 'target_id,source_id,predicted_rmse']
+for feat in feats:
+	csv[0] = csv[0] + ','+str(feat)
+
 for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 	print("target lake ", targ_ct, ":", target_id)
 	lake_df = pd.read_feather("../../metadata/diffs/target_"+ target_id +".feather")
@@ -70,7 +70,7 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 	best_predicted = lake_df.iloc[0]['site_id']
 	best_predicted_rmse = lake_df.iloc[0]['rmse_pred']
 	# lake_df = lake_df[lake_df['rmse_pred'] < lowest_rmse+rel_cut]
-	csv.append(",".join(['nhdhr_'+str(target_id), 'nhdhr_'+str(best_predicted), str(best_predicted_rmse)] + [str(x) for x in lake_df.iloc[0][feats].values]))
+	csv.append(",".join([str(target_id), str(best_predicted), str(best_predicted_rmse)] + [str(x) for x in lake_df.iloc[0][feats].values]))
 
 
 
