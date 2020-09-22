@@ -20,6 +20,8 @@ metadata = pd.read_feather("../../metadata/lake_metadata_full.feather")
 metadata.set_index('site_id', inplace=True)
 glm_all_f = pd.read_csv("../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
+ids = pd.read_csv('../../../metadata/pball_site_ids.csv', header=None)
+ids = ids[0].values
 n_lakes = len(train_lakes)
 test_lakes = ids[~np.isin(ids, train_lakes)]
 assert len(test_lakes) == 305
