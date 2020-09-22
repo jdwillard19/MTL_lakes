@@ -44,7 +44,7 @@ save_file_path = '../../results/pbmtl_glm_transfer_results_expanded.csv'
 model_path = "../../models/metamodel_glm_RMSE_GBR.joblib"
 
 
-metadata = pd.read_feather("../../metadata/lake_metadata_baseJune2020.feather")
+metadata = pd.read_feather("../../metadata/lake_metadata_full.feather")
 sites = pd.read_csv('../../metadata/sites_moreThan10ProfilesWithGLM_June2020Update.csv')
 ids = pd.read_csv('../../metadata/pball_site_ids.csv', header=None)
 ids = ids[0].values
