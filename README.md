@@ -62,7 +62,7 @@ Steps to run MTL pipeline
 `python job_create_pgml_sparse.py`
 `qsub /jobs/qsub_script_pgml_sparse.sh` (mass submit script created in previous command)
 
-13. Compile results for completed jobs in Step 12 (code in src/evaluate/)
+13. Compile results for completed jobs in Step 12 (code in src/evaluate/), for use in Experiment 2
 `python runCustomSparseModels.py`
 
 
@@ -134,10 +134,13 @@ Project Organization (note: \[lake_id*\] can be any number of lake site ids)
         |
         ├── evaluate         <- Scripts to evaluate operations framework performance
             |
-            ├── predict_pb-mtl.py
-            ├── predict_pb-mtl145.py
-            ├── predict_pb-mtl_expanded.py
-            ├── predict_pg-mtl.py
+            ├── runCustomSparseModels.py      <- evaluation of sparse models
+            ├── predict_pb-mtl.py             <- evaluate single source PB-MTL
+            ├── predict_pb-mtl145.py          <- evaluate all sources PB-MTL
+            ├── predict_pb-mtl_expanded.py    <- evaluate PB-MTL expanded test set
+            ├── predict_pg-mtl.py             <- evaluate single source PG-MTL
+            ├── predict_pg-mtl9.py            <- evaluate ensemble source PB-MTL  
+            └── predict_pg-mtl9_expanded.py   <- evaluate ensemble source PB-MTL on expanded test set
     
         |
         └──  models         <- Scripts to support operations on models 
