@@ -240,29 +240,6 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
                 mat_csv.append(",".join(["nhdhr_"+target_id,"nhdhr_"+ source_id,str(meta_rmse_per_lake[targ_ct]),str(srcorr_per_lake[targ_ct]), str(glm_rmse),str(mat_rmse)] + [str(x) for x in lake_df.iloc[i][feats].values]))
 
 
-    # #save model 
-    # total_output_npy = np.average(output_mats, axis=0)
-
-    # if output_to_file:
-    #     outputm_npy = np.transpose(total_output_npy)
-    #     label_mat= np.transpose(label_mats)
-    #     output_df = pd.DataFrame(data=outputm_npy, columns=[str(float(x/2)) for x in range(outputm_npy.shape[1])], index=[str(x)[:10] for x in unique_tst_dates_target]).reset_index()
-    #     label_df = pd.DataFrame(data=label_mat, columns=[str(float(x/2)) for x in range(label_mat.shape[1])], index=[str(x)[:10] for x in unique_tst_dates_target]).reset_index()
-    #     output_df.rename(columns={'index': 'depth'})
-    #     label_df.rename(columns={'index': 'depth'})
-
-    #     assert np.isfinite(np.array(output_df.values[:,1:],dtype=np.float32)).all(), "nan output"
-    #     lake_output_path = output_path+target_id
-    #     if not os.path.exists(lake_output_path):
-    #         os.mkdir(lake_output_path)
-    #     output_df.to_feather(lake_output_path+"/PGMTL_outputs.feather")
-        
-    # loss_output = total_output_npy[~np.isnan(label_mats)]
-    # loss_label = label_mats[~np.isnan(label_mats)]
-    # mat_rmse = np.sqrt(((loss_output - loss_label) ** 2).mean())
-
-    # print("Total rmse=", mat_rmse)
-    # srcorr_per_lake[targ_ct]
     y_pred = pred_rmse_per_source_per_lake[:,targ_ct]
     y_act = rmse_per_source_per_lake[:,targ_ct]
     meta_rmse_per_lake[targ_ct] = np.median(np.sqrt(((y_pred - y_act) ** 2).mean()))
