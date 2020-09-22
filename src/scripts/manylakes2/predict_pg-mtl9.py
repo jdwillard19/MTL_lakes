@@ -1,84 +1,56 @@
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import KFold
 import pdb
 import sys
-sys.path.append('../../data')
+import os
+sys.path.append('../data')
 from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
 import torch
 import torch.nn as nn
 import torch.utils.data
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.init import xavier_normal_
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.svm import SVR
-from sklearn.model_selection import cross_val_score
-from sklearn.neural_network import MLPRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 from scipy.stats import spearmanr
 from joblib import dump, load
 import re
 
 
-metadata = pd.read_feather("../../../metadata/lake_metadata_baseJune2020.feather")
+metadata = pd.read_feather("../../metadata/lake_metadata_full.feather")
 metadata.set_index('site_id', inplace=True)
-ids = pd.read_csv('../../../metadata/pball_site_ids.csv', header=None)
-ids = ids[0].values
-glm_all_f = pd.read_csv("../../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
-train_df = pd.read_feather("../../../results/transfer_learning/glm/glm_meta_train_rmses.feather")
+glm_all_f = pd.read_csv("../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
+train_lakes_wp = np.unique(glm_all_f['target_id'].values) #with prefix
+
+ids = pd.read_csv('../../metadata/pball_site_ids.csv', header=None)
+ids = ids[0].values
 n_lakes = len(train_lakes)
 test_lakes = ids[~np.isin(ids, train_lakes)]
+assert len(test_lakes) == 305
 k = 9
 output_to_file = True
-# print(train_lakes.shape[0], " training lakes")
 
-mat_csv = []
-mat_csv.append(",".join(["target_id","source_id","glm_rmse","rmse","source_observations",\
-                         "mean_source_observation_temp","diff_max_depth",'diff_surface_area', 'diff_RH_mean_autumn', 'diff_lathrop_strat','dif_glm_strat_perc',\
-                         'percent_diff_max_depth', 'percent_diff_surface_area','perc_dif_sqrt_surface_area']))
+save_file_path = "../../results/pgmtl_results_single_source.csv"
 
-csv = []
-csv.append(",".join(["target_id","pgmtl9_rmse","glm_rmse(PB0)","rmse_predicted_mean","rmse_predicted_minimum"]))
-
-feats = ['n_obs', 'obs_temp_mean', 'dif_max_depth', 'dif_surface_area',
-       'dif_rh_mean_au', 'dif_lathrop_strat', 'dif_glm_strat_perc',
-       'perc_dif_max_depth', 'perc_dif_surface_area',
+#########################################################################################
+#paste features found in "pbmtl_feature_selection.py" here
+feats = ['n_obs_sp', 'n_obs_su', 'dif_max_depth', 'dif_surface_area',
+       'dif_glm_strat_perc', 'perc_dif_max_depth', 'perc_dif_surface_area',
        'perc_dif_sqrt_surface_area']
+###################################################################################
 
 
-train = False
-if train:
-    # #compile training data from all training lakes
-    train_df = pd.DataFrame()
+#load metamodel
+model_path = '../../models/metamodel_pgdl_RMSE_GBR.joblib'
+model = load(model_path)
 
-    for _, lake_id in enumerate(train_lakes):
-
-        new_df = pd.DataFrame()
-        lake_df_res = pd.read_csv("../../../results/transfer_learning/target_"+lake_id+"/results_all_source_models2.csv") 
-        lake_df_res = lake_df_res[lake_df_res.source_id != 'source_id']
-        lake_df = pd.read_feather("../../../metadata/diff/target_"+lake_id+"_pball_July2020.feather")
-        lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes)]
-        lake_df_res = lake_df_res[np.isin(lake_df_res['source_id'], train_lakes)]
-        lake_df = pd.merge(left=lake_df, right=lake_df_res.astype('object'), left_on='site_id', right_on='source_id')
-        new_df = lake_df
-        train_df = pd.concat([train_df, new_df], ignore_index=True)
-
-    X_trn = pd.DataFrame(train_df[feats])
-    y_trn = np.array([float(x) for x in np.ravel(pd.DataFrame(train_df['rmse']))])
+#csv to write to
+mat_csv = ["target_id,source_ids,pb0_rmse,pgmtl_rmse"]
+for feat in feats:
+    mat_csv[0] = mat_csv[0] + ','+str(feat)
 
 
-
-    # model = GradientBoostingRegressor(n_estimators=3700, learning_rate=.05)
-    model = GradientBoostingRegressor(n_estimators=3700, learning_rate=.05)
-    model.fit(X_trn, y_trn)
-
-
-    dump(model, "PGMTL_GBR_pball.joblib")
-
-model = load("PGMTL_GBR_pball_Aug21.joblib")
-
-# data structs to fill
+#data structures to fill
 rmse_per_lake = np.empty(test_lakes.shape[0])
 glm_rmse_per_lake = np.empty(test_lakes.shape[0])
 srcorr_per_lake = np.empty(test_lakes.shape[0])
@@ -89,38 +61,32 @@ rmse_per_lake[:] = np.nan
 glm_rmse_per_lake[:] = np.nan
 meta_rmse_per_lake[:] = np.nan
 csv = []
-csv.append('target_id,rmse,rmse_pred,spearman,glm_rmse,site_id')
-mean_per_k = np.empty((9, test_lakes.shape[0]))
-mean_per_k[:] = np.nan
+csv.append('target_id,rmse,rmse_pred,spearman,glm_rmse')
+
+
+#where to output files
+output_path = "../../results/outputs/"
+if not os.path.exists(output_path):
+    os.mkdir(output_path)
+
 
 err_per_source = np.empty((145,len(test_lakes)))
-
 for targ_ct, target_id in enumerate(test_lakes): #for each target lake
     print(str(targ_ct),'/',len(test_lakes),':',target_id)
     lake_df = pd.DataFrame()
     lake_id = target_id
 
-    lake_df_res = pd.read_csv("../../../results/transfer_learning/target_"+lake_id+"/results_all_source_models2.csv") 
-    lake_df_res = lake_df_res[lake_df_res.source_id != 'source_id']
-
-    lake_df = pd.read_feather("../../../metadata/diff/target_"+lake_id+"_pball_Aug2020.feather")
-    lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes)]
-    lake_df_res = lake_df_res[np.isin(lake_df_res['source_id'], train_lakes)]
-    lake_df = pd.merge(left=lake_df, right=lake_df_res.astype('object'), left_on='site_id', right_on='source_id')
-
+    lake_df = pd.read_feather("../../metadata/diffs/target_nhdhr_"+lake_id+".feather")
+    lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes_wp)]
     X = pd.DataFrame(lake_df[feats])
 
 
     y_pred = model.predict(X)
     lake_df['rmse_pred'] = y_pred
-    y_act = np.array([float(x) for x in np.ravel(lake_df['rmse'].values)])
-    # mat_csv.append(",".join(["nhdhr_"+target_id,]))
-    meta_rmse_per_lake[targ_ct] = np.median(np.sqrt(((y_pred - y_act) ** 2).mean()))
-    srcorr_per_lake[targ_ct] = spearmanr(y_pred, y_act).correlation
 
     lake_df.sort_values(by=['rmse_pred'], inplace=True)
     lowest_rmse = lake_df.iloc[0]['rmse_pred']
-    ens_pred_rmse_mean = lake_df.iloc[:k]['rmse_pred'].values.mean()
+
     top_ids = [str(j) for j in lake_df.iloc[:k]['site_id']]
     
     best_site = top_ids[0]
@@ -128,7 +94,7 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 
 
 
-    data_dir_target = "../../data/processed/lake_data/"+target_id+"/" 
+    data_dir_target = "../../data/processed/"+target_id+"/" 
     #target agnostic model and data params
     use_gpu = True
     n_features = 8
@@ -193,11 +159,9 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 
     for i, source_id in enumerate(top_ids): 
         #for each top id
-
+        source_id = re.search('nhdhr_(.*)', source_id).group(1)
         #load source model
-        load_path = "../../../models/single_lake_models/"+source_id+"/PGRNN_source_model_0.7"
-        # load_path = "../../../models/single_lake_models/"+source_id+"/PGRNN_norm_all"
-        # load_path = "../../../models/single_lake_models/"+source_id+"/PGRNN_CV"
+        load_path = "../../models/"+source_id+"/PGRNN_source_model_0.7"
         n_hidden = torch.load(load_path)['state_dict']['out.weight'].shape[1]
         lstm_net = LSTM(n_features, n_hidden, batch_size)
         if use_gpu:
@@ -258,11 +222,7 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
                 (outputm_npy, labelm_npy) = parseMatricesFromSeqs(pred.cpu().numpy(), targets.cpu().numpy(), depths, tmp_dates, n_depths, 
                                                                 n_test_dates_target, u_depths_target,
                                                                 unique_tst_dates_target) 
-                # if target_id == '113471457':
-                #   np.save('./best_ens/source_'+source_id+'_output', outputm_npy)
-                #   np.save('./best_ens/labels', labelm_npy)
-                #   np.save('./best_ens/dates', unique_tst_dates_target)
-                #store output
+                #to store output
                 output_mats[i,:,:] = outputm_npy
                 if i == 0:
                     #store label
@@ -274,13 +234,13 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
                 print(source_id+" rmse=", mat_rmse)
                 err_per_source[i,targ_ct] = mat_rmse
 
-                glm_rmse = float(metadata.loc[target_id].glm_uncal_rmse_full)
+                glm_rmse = float(metadata.loc["nhdhr_"+target_id].glm_uncal_rmse_full)
 
-                mat_csv.append(",".join(["nhdhr_"+target_id,"nhdhr_"+ source_id,str(meta_rmse_per_lake[targ_ct]),str(srcorr_per_lake[targ_ct]), str(glm_rmse),str(mat_rmse)] + [str(x) for x in lake_df.iloc[i][feats].values]))
 
 
     #save model 
     total_output_npy = np.average(output_mats, axis=0)
+
     if output_to_file:
         outputm_npy = np.transpose(total_output_npy)
         label_mat= np.transpose(label_mats)
@@ -288,78 +248,32 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
         label_df = pd.DataFrame(data=label_mat, columns=[str(float(x/2)) for x in range(label_mat.shape[1])], index=[str(x)[:10] for x in unique_tst_dates_target]).reset_index()
         output_df.rename(columns={'index': 'depth'})
         label_df.rename(columns={'index': 'depth'})
-        assert np.isfinite(np.array(output_df.values[:,1:],dtype=np.float32)).all(), "nan output"
-        output_df.to_feather("mtl_outputs9/target_nhdhr_"+target_id+"_PGMTL9_ensemble_outputs.feather")
 
+        assert np.isfinite(np.array(output_df.values[:,1:],dtype=np.float32)).all(), "nan output"
+        lake_output_path = output_path+target_id
+        if not os.path.exists(lake_output_path):
+            os.mkdir(lake_output_path)
+        output_df.to_feather(lake_output_path+"/PGMTL9_outputs.feather")
+        
     loss_output = total_output_npy[~np.isnan(label_mats)]
     loss_label = label_mats[~np.isnan(label_mats)]
     mat_rmse = np.sqrt(((loss_output - loss_label) ** 2).mean())
-    mat_csv.append(",".join(["nhdhr_"+target_id,"9 MODEL ENSEMBLE",str(mat_rmse)] + ['NA' for x in lake_df.iloc[i][feats].values]))
-    # mat_csv.append(",".join(["nhdhr_"+target_id,"9 MODEL ENSEMBLE",str(mat_rmse)] + ['NA' for x in lake_df.iloc[i][feats].values]))
+    mat_csv.append(",".join(["nhdhr_"+target_id," : ".join(["nhdhr_"+ source_id for source_id in top_ids]), str(glm_rmse),str(mat_rmse)] + [str(x) for x in lake_df.iloc[i][feats].values]))
 
     print("Total rmse=", mat_rmse)
     spcorr = srcorr_per_lake[targ_ct]
     rmse_per_lake[targ_ct] = mat_rmse
 
-    # if ind_rmses.mean() - mat_rmse > most_imp_diff:
-    #   most_imp_diff = ind_rmses.mean() - mat_rmse
-    #   most_imp_site_id = target_id
-    #   most_imp_total_rmse = mat_rmse
-    #   most_imp_ind_rmses = ind_rmses
-    #   most_imp_source_ids = top_ids
 
 
-    glm_rmse = float(metadata.loc[target_id].glm_uncal_rmse_full)
-    csv.append(",".join([str(target_id), str(mat_rmse),str(glm_rmse),str(lowest_rmse),str(ens_pred_rmse_mean)]))
 
-
-# with open("../../../results/transfer_learning/rf_testset.csv",'a') as file:
-#   for line in test_lake_csv:
-#       file.write(line)
-#       file.write('\n')
-with open('pgdlmtl_ens9_wPredStats.csv','w') as file:
-    for line in csv:
-        file.write(line)
-        file.write('\n')
-with open('pgdlmtl9_result.csv','w') as file:
+with open(save_file_path,'w') as file:
     for line in mat_csv:
         file.write(line)
         file.write('\n')
 
 
-# with open('pgml_result_logloss.csv','w') as file:
-#     for line in mat_csv:
-#         file.write(line)
-#         file.write('\n')
 
-# print("mean meta test RMSE: ",meta_rmse_per_lake.mean())
-# print("median meta test RMSE: ",np.median(meta_rmse_per_lake))
-# print("median srcorr: ",np.median(srcorr_per_lake))
-# print("median meta test RMSE(med): ",np.median(med_meta_rmse_per_lake))
-# print("mean test RMSE: ",rmse_per_lake.mean())
+
 print("median test RMSE: ",np.median(rmse_per_lake))
-# # print("mean test RMSE: ",rmse_per_testlake.mean())
-# # 
-# # biases = np.array(biases)
-# # np.save("./biases.csv", biases)
 
-# print("Target: ",most_imp_site_id)
-# print("sources: ",most_imp_source_ids)
-# print("diff: ",most_imp_diff)
-# print("total rmse: ",most_imp_total_rmse)
-# print("ind rmses: ",most_imp_ind_rmses)
-# print("ind rmses mean: ",most_imp_ind_rmses.mean())
-
-
-# df['rmse_pred'] = y_pred
-# df = df.sort_values(by=['rmse_pred'])
-# print(df)
-#assess performance of the model
-
-
-# scores = []
-# kfold = KFold(n_splits=10, shuffle=True, random_state=42)
-# for i, (train, test) in enumerate(kfold.split(X, y)):
-#   model.fit(X.iloc[train,:], y.iloc[train,:])
-#   score = model.score(X.iloc[test,:], y.iloc[test,:])
-#   scores.append(score)

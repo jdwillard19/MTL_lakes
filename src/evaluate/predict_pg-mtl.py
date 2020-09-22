@@ -222,11 +222,7 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
                 (outputm_npy, labelm_npy) = parseMatricesFromSeqs(pred.cpu().numpy(), targets.cpu().numpy(), depths, tmp_dates, n_depths, 
                                                                 n_test_dates_target, u_depths_target,
                                                                 unique_tst_dates_target) 
-                # if target_id == '113471457':
-                #   np.save('./best_ens/source_'+source_id+'_output', outputm_npy)
-                #   np.save('./best_ens/labels', labelm_npy)
-                #   np.save('./best_ens/dates', unique_tst_dates_target)
-                #store output
+                #to store output
                 output_mats[i,:,:] = outputm_npy
                 if i == 0:
                     #store label
