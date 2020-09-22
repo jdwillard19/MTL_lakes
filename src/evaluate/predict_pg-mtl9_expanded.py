@@ -1,20 +1,15 @@
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import KFold
 import pdb
 import sys
-sys.path.append('../../data')
+sys.path.append('../data')
 from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
 import torch
 import torch.nn as nn
 import torch.utils.data
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.init import xavier_normal_
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.svm import SVR
-from sklearn.model_selection import cross_val_score
-from sklearn.neural_network import MLPRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 from scipy.stats import spearmanr
 from joblib import dump, load
 import re
