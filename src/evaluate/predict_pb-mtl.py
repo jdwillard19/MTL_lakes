@@ -56,11 +56,8 @@ model = load(model_path)
 
 #data structs to fill
 rmse_per_lake = np.empty(test_lakes.shape[0])
-glm_rmse_per_lake = np.empty(test_lakes.shape[0])
 meta_rmse_per_lake = np.empty(test_lakes.shape[0])
-top_rmse_per_lake = np.empty((test_lakes.shape[0], 10))
 rmse_per_lake[:] = np.nan
-glm_rmse_per_lake[:] = np.nan
 srcorr_per_lake = np.empty(test_lakes.shape[0])
 srcorr_per_lake[:] = np.nan
 meta_rmse_per_lake[:] = np.nan
