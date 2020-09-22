@@ -1,26 +1,47 @@
+# import pandas as pd
+# import numpy as np
+# from sklearn.linear_model import LinearRegression
+# from sklearn.model_selection import KFold
+# import pdb
+# import sys
+# sys.path.append('../data')
+# from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
+# import torch
+# from metadata_ops import nhd2nhdhr
+# import torch.nn as nn
+# import torch.utils.data
+# from torch.utils.data import Dataset, DataLoader
+# from torch.nn.init import xavier_normal_
+# from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+# from sklearn.svm import SVR
+# from sklearn.model_selection import cross_val_score
+# from sklearn.neural_network import MLPRegressor
+# from scipy.stats import spearmanr
+# from joblib import dump, load
+# import re
+# # build models to predict which models to use for transfer learning
+
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import KFold
 import pdb
 import sys
 sys.path.append('../data')
-from pytorch_data_operations import buildLakeDataForRNN_manylakes_finetune2, parseMatricesFromSeqs
-import torch
-from metadata_ops import nhd2nhdhr
-import torch.nn as nn
-import torch.utils.data
-from torch.utils.data import Dataset, DataLoader
-from torch.nn.init import xavier_normal_
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.svm import SVR
-from sklearn.model_selection import cross_val_score
-from sklearn.neural_network import MLPRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 from scipy.stats import spearmanr
 from joblib import dump, load
 import re
-# build models to predict which models to use for transfer learning
 
+################################################################################3
+# (Sept 2020 - Jared) - evaluate PB-MTL model by predicting best source model for each of 1882 expanded test lakes
+# Features and hyperparamters must be manually specified below 
+# (e.g. feats = ['dif_max_depth', ....]; n_estimators = 4000, etc)
+#############################################################################################################
+
+#file to save results to
+save_file_path = '../../results/pbmtl_glm_transfer_results_expanded.csv'
+
+#path to load metamodel from
+model_path = "../../models/metamodel_glm_RMSE_GBR.joblib"
 
 
 metadata = pd.read_feather("../../metadata/lake_metadata_baseJune2020.feather")
@@ -31,6 +52,7 @@ glm_all_f = pd.read_csv("../../results/glm_transfer/RMSE_transfer_glm_pball.csv"
 train_df = pd.read_feather("../../results/transfer_learning/glm/train_rmses_pball.feather")
 result_df = pd.read_csv("../../results/glm_transfer/RMSE_transfer_test_extended_glm.csv")
 
+pdb.set_trace()
 train_lakes = [re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)]
 n_lakes = len(train_lakes)
 all_sites = metadata['site_id'].values
@@ -41,60 +63,28 @@ test_site_nhd = np.array(['test_nhdhr_'+x for x in test_lakes])
 
 
 
-feats = ['n_obs', 'obs_temp_mean', 'obs_temp_skew', 'obs_temp_kurt',
-       'obs_temp_mean_airdif', 'dif_max_depth',
+#########################################################################################
+#paste features found in "pbmtl_feature_selection.py" here
+feats = ['n_obs_su', 'obs_temp_mean', 'obs_temp_skew', 'obs_temp_kurt',
+       'ad_glm_strat_perc', 'obs_temp_mean_airdif', 'dif_max_depth',
        'dif_surface_area', 'dif_sw_mean_au', 'dif_ws_mean_au',
-       'dif_lathrop_strat', 'dif_glm_strat_perc', 'ad_glm_strat_perc','perc_dif_max_depth',
-       'perc_dif_surface_area']
+       'dif_lathrop_strat', 'dif_glm_strat_perc', 'perc_dif_max_depth',
+       'perc_dif_sqrt_surface_area']
+###################################################################################
 
 
 
-train = False
-if train:
-	model = GradientBoostingRegressor(n_estimators=3700,learning_rate=0.05)
-	X = pd.DataFrame(train_df[feats])
-	y = np.ravel(pd.DataFrame(train_df['rmse']))
+#load metamodel
+model = load(model_path)
 
-	# model = GradientBoostingRegressor(n_estimators=3100, learning_rate=.05)
-	model.fit(X,y)
-	dump(model, 'metamodel_glm_RMSE_GBR.joblib') 
-
+########################
+##########################
+# framework evaluation code
+##########################
+#######################
 
 
-model = load('metamodel_glm_RMSE_GBR.joblib') 
-###############################################################
-
-
-importances = model.feature_importances_
-print(importances)
-# # std = np.std([tree.feature_importances_ for tree in forest.estimators_],
-# #              axis=0)
-# indices = np.argsort(importances)[::-1]
-
-# Print the feature ranking
-# print("Feature ranking:")
-# X = X_trn
-# feats = [rmse_feats[i] for i in indices[:14]]
-# for f in range(X.shape[1]):
-#     print("%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]]))
-
-# # Plot the feature importances of the forest
-# plt.figure()
-# plt.title("Feature importances")
-# print(feats)
-# plt.bar(range(14), importances[indices][:14],
-#        color="r", align="center")
-# plt.xticks(range(14), feats, rotation='vertical')
-# plt.xlim([-1, 14])
-# # plt.show()
-# plt.tight_layout()
-# plt.savefig("./feat_importances_glm.png")
-# sys.exit()
-
-############################################################################
-#use model to predict top GLM source model for every target lake
-################################################################################
-# test_lakes = train_lakes
+#data structs to fill
 rmse_per_lake = np.empty(test_lakes.shape[0])
 glm_rmse_per_lake = np.empty(test_lakes.shape[0])
 meta_rmse_per_lake = np.empty(test_lakes.shape[0])
