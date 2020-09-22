@@ -73,22 +73,14 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
     print(str(targ_ct),'/',len(test_lakes),':',target_id)
     lake_df = pd.DataFrame()
     lake_id = target_id
-    lake_df_res = pd.read_csv("../../results/transfer_learning/target_"+lake_id+"/resultsPGRNNbasic_pball",header=None,names=['source_id','rmse'])
-    lake_df_res = lake_df_res[lake_df_res.source_id != 'source_id']
 
     lake_df = pd.read_feather("../../metadata/diffs/target_nhdhr_"+lake_id+".feather")
     lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes_wp)]
-    lake_df_res = lake_df_res[np.isin(lake_df_res['source_id'], train_lakes)]
-    lake_df_res['source_id2'] = ['nhdhr_'+str(x) for x in lake_df_res['source_id'].values]
-    lake_df = pd.merge(left=lake_df, right=lake_df_res.astype('object'), left_on='site_id', right_on='source_id2')
     X = pd.DataFrame(lake_df[feats])
 
 
     y_pred = model.predict(X)
     lake_df['rmse_pred'] = y_pred
-    y_act = np.array([float(x) for x in np.ravel(lake_df['rmse'].values)])
-    meta_rmse_per_lake[targ_ct] = np.median(np.sqrt(((y_pred - y_act) ** 2).mean()))
-    srcorr_per_lake[targ_ct] = spearmanr(y_pred, y_act).correlation
 
     lake_df.sort_values(by=['rmse_pred'], inplace=True)
     lowest_rmse = lake_df.iloc[0]['rmse_pred']
