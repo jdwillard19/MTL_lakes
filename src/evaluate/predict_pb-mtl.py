@@ -62,6 +62,7 @@ srcorr_per_lake = np.empty(test_lakes.shape[0])
 srcorr_per_lake[:] = np.nan
 meta_rmse_per_lake[:] = np.nan
 csv = ['target_id,source_id,pb-mtl_rmse,predicted_rmse,spearman,meta_rmse']
+pdb.set_trace()
 for feat in feats:
 	csv += ','+str(feat)
 
@@ -97,7 +98,7 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 	rmse_per_lake[targ_ct] = y_act_top
 
 	best_predicted_rmse = lake_df.iloc[0]['rmse_pred']
-	csv.append(",".join(['nhdhr'+str(target_id), 'nhdhr'+str(best_predicted), str(y_act_top), str(best_predicted_rmse),str(srcorr_per_lake[targ_ct]),str(meta_rmse_per_lake[targ_ct]) ] + [str(x) for x in lake_df.iloc[0][feats].values]))
+	csv.append(",".join(['nhdhr_'+str(target_id), str(best_predicted), str(y_act_top), str(best_predicted_rmse),str(srcorr_per_lake[targ_ct]),str(meta_rmse_per_lake[targ_ct]) ] + [str(x) for x in lake_df.iloc[0][feats].values]))
 
 #print medians
 print("median meta test RMSE: ",np.median(meta_rmse_per_lake))

@@ -18,7 +18,7 @@ from joblib import dump, load
 import re
 
 
-metadata = pd.read_feather("../../../metadata/lake_metadata_baseJune2020.feather")
+metadata = pd.read_feather("../../../metadata/lake_metadata_full.feather")
 metadata.set_index('site_id', inplace=True)
 ids = pd.read_csv('../../../metadata/pball_site_ids.csv', header=None)
 ids = ids[0].values
@@ -29,51 +29,23 @@ n_lakes = len(train_lakes)
 test_lakes = ids[~np.isin(ids, train_lakes)]
 k = 1
 output_to_file = True
-biases = []
-# print(train_lakes.shape[0], " training lakes")
 
+#
 mat_csv = []
 mat_csv.append(",".join(["target_id","source_id","glm_rmse","rmse","source_observations",\
                          "mean_source_observation_temp","diff_max_depth",'diff_surface_area', 'diff_RH_mean_autumn', 'diff_lathrop_strat','dif_glm_strat_perc',\
                          'percent_diff_max_depth', 'percent_diff_surface_area','perc_dif_sqrt_surface_area']))
 
+#########################################################################################
+#paste features found in "pbmtl_feature_selection.py" here
 feats = ['n_obs_sp', 'n_obs_su', 'dif_max_depth', 'dif_surface_area',
        'dif_glm_strat_perc', 'perc_dif_max_depth', 'perc_dif_surface_area',
        'perc_dif_sqrt_surface_area']
-# feats = feats[ranks == 1]
-train = False
-model = []
-if train:
-    # #compile training data from all training lakes
-    train_df = pd.DataFrame()
+###################################################################################
 
-    for _, lake_id in enumerate(train_lakes):
-
-        new_df = pd.DataFrame()
-        lake_df_res = pd.read_csv("../../../results/transfer_learning/target_"+lake_id+"/results_all_source_models2.csv") 
-        lake_df_res = lake_df_res[lake_df_res.source_id != 'source_id']
-        lake_df_res['source_id'] = [str(x) for x in lake_df_res.astype('object')['source_id']]
-
-        lake_df = pd.read_feather("../../../metadata/diff/target_"+lake_id+"_pball_Aug2020.feather")
-        lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes)]
-        lake_df_res = lake_df_res[np.isin(lake_df_res['source_id'], train_lakes)]
-        new_df = pd.merge(left=lake_df, right=lake_df_res.astype('object'), left_on='site_id', right_on='source_id')
-        assert not new_df.empty
-        train_df = pd.concat([train_df, new_df], ignore_index=True)
-
-    X_trn = pd.DataFrame(train_df[feats])
-    y_trn = np.array([float(x) for x in np.ravel(pd.DataFrame(train_df['rmse']))])
-
-
-
-    # model = GradientBoostingRegressor(n_estimators=3700, learning_rate=.05)
-    model = GradientBoostingRegressor(n_estimators=4900, learning_rate=.05)
-    model.fit(X_trn, y_trn)
-
-
-    dump(model, "PGMTL_GBR_pball_Aug21.joblib")
-# model = load("PGML_RMSE_GBR_pball2.joblib")
-model = load("PGMTL_GBR_pball_Aug21.joblib")
+#load metamodel
+model_path = '../../models/metamodel_pgdl_RMSE_GBR.joblib'
+model = load(model_path)
 
 
 importances = model.feature_importances_
