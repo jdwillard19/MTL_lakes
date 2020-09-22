@@ -54,17 +54,16 @@ k = 9
 #csv to write to
 mat_csv = ["target_id,source_ids,pb0_rmse,pgmtl_rmse"]
 
+#load metamodel
+model_path = '../../models/metamodel_pgdl_RMSE_GBR.joblib'
+model = load(model_path)
 
 #data structs
 rmse_per_lake = np.empty(test_lakes.shape[0])
 glm_rmse_per_lake = np.empty(test_lakes.shape[0])
-srcorr_per_lake = np.empty(test_lakes.shape[0])
 
-meta_rmse_per_lake = np.empty(test_lakes.shape[0])
-med_meta_rmse_per_lake = np.empty(test_lakes.shape[0])
 rmse_per_lake[:] = np.nan
 glm_rmse_per_lake[:] = np.nan
-meta_rmse_per_lake[:] = np.nan
 # csv.append('target_id,rmse,rmse_pred,rmse_pred_lower,rmse_pred_upper,rmse_pred_med,spearman,glm_rmse,site_id')
 
 err_per_source = np.empty((9,len(test_lakes)))
@@ -256,7 +255,6 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
     mat_rmse = np.sqrt(((loss_output - loss_label) ** 2).mean())
 
     print("Total rmse=", mat_rmse)
-    spcorr = srcorr_per_lake[targ_ct]
     rmse_per_lake[targ_ct] = mat_rmse
     glm_rmse = float(metadata.loc[target_id].glm_uncal_rmse_full)
     mat_csv.append(",".join(["nhdhr_"+target_id," : ".join([source_id for source_id in top_ids]), str(glm_rmse),str(mat_rmse)]))
