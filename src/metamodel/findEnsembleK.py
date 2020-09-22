@@ -12,8 +12,12 @@ from torch.nn.init import xavier_normal_
 from sklearn.ensemble import GradientBoostingRegressor
 import math
 import re
-# build models to predict which models to use for transfer learning
-# method = 'linear'
+
+
+#######################################################################
+# (Sept 2020 - Jared) - this script uses cross validation on the training lakes
+#                       to estimate the best number of lakes "k" to ensemble
+#############################################################################
 
 use_gpu = True
 
@@ -21,7 +25,7 @@ use_gpu = True
 ids = pd.read_csv('../../metadata/pball_site_ids.csv', header=None)
 ids = ids[0].values
 glm_all_f = pd.read_csv("../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
-train_lakes = np.array([re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)])
+train_lakes = np.array([re.search('nhdhr_(.*)', x).group(1) for x in np.unique(glm_all_f['target_id'].values)])[:140]
 # train_lakes_wp = np.unique(glm_all_f['target_id'].values) #with prefix
 
 n_test_lakes = len(train_lakes)
@@ -226,7 +230,6 @@ for n in range(n_fold):
                         inputs = inputs[:, begin_loss_ind:, :]
                         depths = depths[:, begin_loss_ind:]
                         mse = mse_criterion(pred[loss_indices], targets[loss_indices])
-                        # print("test loss = ",mse)
                         avg_mse += mse
 
                         if mse > 0: #obsolete i think
@@ -247,7 +250,6 @@ for n in range(n_fold):
                         loss_label = labelm_npy[~np.isnan(labelm_npy)]
 
                         mat_rmse = np.sqrt(((loss_output - loss_label) ** 2).mean())
-                        # print(source_id+" rmse=", mat_rmse)
 
 
             #save model 
@@ -268,8 +270,8 @@ avg_err_array = np.empty(k_arr.shape[0])
 for j in range(k_arr.shape[0]):
     avg_err_array[j] = err_array[:,j].mean()
 
-print(k_arr)
-print(avg_err_array)
+print("k array tested: ",k_arr)
+print("err per k (select lowest)": ,avg_err_array)
 # 
 
 
