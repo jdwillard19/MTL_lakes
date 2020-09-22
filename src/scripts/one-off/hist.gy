@@ -1,4 +1,0 @@
-import pandas as pd
-import numpy as np
-
-hist,bin_edges = np.histogram(np_hist)
