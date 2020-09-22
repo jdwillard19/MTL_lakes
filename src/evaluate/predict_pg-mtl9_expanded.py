@@ -263,7 +263,7 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 
     print("Total rmse=", mat_rmse)
     rmse_per_lake[targ_ct] = mat_rmse
-    glm_rmse = float(metadata.loc[target_id].glm_uncal_rmse_full)
+    glm_rmse = float(metadata.loc["nhdhr_"+target_id].glm_uncal_rmse_full)
     mat_csv.append(",".join(["nhdhr_"+target_id," : ".join([source_id for source_id in top_ids]), str(glm_rmse),str(mat_rmse)]))
 
 
