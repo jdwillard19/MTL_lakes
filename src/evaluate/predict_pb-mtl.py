@@ -64,6 +64,7 @@ meta_rmse_per_lake[:] = np.nan
 csv = 'target_id,source_id,pb-mtl_rmse,predicted_rmse,spearman,meta_rmse'
 for feat in feats:
 	csv += ','+str(feat)
+csv = [csv]
 
 
 #for each test lake, select source lake and record results
