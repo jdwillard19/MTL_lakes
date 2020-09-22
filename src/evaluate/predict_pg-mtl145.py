@@ -51,9 +51,9 @@ for feat in feats:
 
 
 #data structures to fill
-rmse_per_source_per_lake = np.empty(145,test_lakes.shape[0])
+rmse_per_source_per_lake = np.empty((145,test_lakes.shape[0]))
 glm_rmse_per_lake = np.empty(test_lakes.shape[0])
-pred_rmse_per_source_per_lake = np.empty(145,test_lakes.shape[0])
+pred_rmse_per_source_per_lake = np.empty((145,test_lakes.shape[0]))
 srcorr_per_lake = np.empty(test_lakes.shape[0])
 
 meta_rmse_per_lake = np.empty(test_lakes.shape[0])
