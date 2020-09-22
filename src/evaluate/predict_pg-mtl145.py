@@ -27,10 +27,10 @@ ids = ids[0].values
 n_lakes = len(train_lakes)
 test_lakes = ids[~np.isin(ids, train_lakes)]
 assert len(test_lakes) == 305
-k = 9
+k = 145
 output_to_file = True
 
-save_file_path = "../../results/pgmtl_results_ens_9source.csv"
+save_file_path = "../../results/pgmtl_results_all_source.csv"
 
 #########################################################################################
 #paste features found in "pbmtl_feature_selection.py" here
@@ -45,14 +45,15 @@ model_path = '../../models/metamodel_pgdl_RMSE_GBR.joblib'
 model = load(model_path)
 
 #csv to write to
-mat_csv = ["target_id,source_ids,pb0_rmse,pgmtl_rmse"]
+mat_csv = ["target_id,source_id,meta_rmse,spearman,pb0_rmse,pgmtl_rmse"]
 for feat in feats:
     mat_csv[0] = mat_csv[0] + ','+str(feat)
 
 
 #data structures to fill
-rmse_per_lake = np.empty(test_lakes.shape[0])
+rmse_per_source_per_lake = np.empty(145,test_lakes.shape[0])
 glm_rmse_per_lake = np.empty(test_lakes.shape[0])
+pred_rmse_per_source_per_lake = np.empty(145,test_lakes.shape[0])
 srcorr_per_lake = np.empty(test_lakes.shape[0])
 
 meta_rmse_per_lake = np.empty(test_lakes.shape[0])
@@ -90,7 +91,7 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
     top_ids = [str(j) for j in lake_df.iloc[:k]['site_id']]
     
     best_site = top_ids[0]
-
+    pred_rmse_per_source_per_lake[:,targ_ct] = lake_df['rmse_pred'].values
 
 
 
@@ -231,38 +232,39 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
                 loss_label = labelm_npy[~np.isnan(labelm_npy)]
 
                 mat_rmse = np.sqrt(((loss_output - loss_label) ** 2).mean())
-                print(source_id+" rmse=", mat_rmse)
+                print(i,"/",str(len(top_ids)),": source ",source_id+" rmse=", mat_rmse)
                 err_per_source[i,targ_ct] = mat_rmse
 
                 glm_rmse = float(metadata.loc["nhdhr_"+target_id].glm_uncal_rmse_full)
+                rmse_per_source_per_lake[i,targ_ct] = mat_rmse
+                mat_csv.append(",".join(["nhdhr_"+target_id,"nhdhr_"+ source_id,str(meta_rmse_per_lake[targ_ct]),str(srcorr_per_lake[targ_ct]), str(glm_rmse),str(mat_rmse)] + [str(x) for x in lake_df.iloc[i][feats].values]))
 
 
+    # #save model 
+    # total_output_npy = np.average(output_mats, axis=0)
 
-    #save model 
-    total_output_npy = np.average(output_mats, axis=0)
+    # if output_to_file:
+    #     outputm_npy = np.transpose(total_output_npy)
+    #     label_mat= np.transpose(label_mats)
+    #     output_df = pd.DataFrame(data=outputm_npy, columns=[str(float(x/2)) for x in range(outputm_npy.shape[1])], index=[str(x)[:10] for x in unique_tst_dates_target]).reset_index()
+    #     label_df = pd.DataFrame(data=label_mat, columns=[str(float(x/2)) for x in range(label_mat.shape[1])], index=[str(x)[:10] for x in unique_tst_dates_target]).reset_index()
+    #     output_df.rename(columns={'index': 'depth'})
+    #     label_df.rename(columns={'index': 'depth'})
 
-    if output_to_file:
-        outputm_npy = np.transpose(total_output_npy)
-        label_mat= np.transpose(label_mats)
-        output_df = pd.DataFrame(data=outputm_npy, columns=[str(float(x/2)) for x in range(outputm_npy.shape[1])], index=[str(x)[:10] for x in unique_tst_dates_target]).reset_index()
-        label_df = pd.DataFrame(data=label_mat, columns=[str(float(x/2)) for x in range(label_mat.shape[1])], index=[str(x)[:10] for x in unique_tst_dates_target]).reset_index()
-        output_df.rename(columns={'index': 'depth'})
-        label_df.rename(columns={'index': 'depth'})
-
-        assert np.isfinite(np.array(output_df.values[:,1:],dtype=np.float32)).all(), "nan output"
-        lake_output_path = output_path+target_id
-        if not os.path.exists(lake_output_path):
-            os.mkdir(lake_output_path)
-        output_df.to_feather(lake_output_path+"/PGMTL9_outputs.feather")
+    #     assert np.isfinite(np.array(output_df.values[:,1:],dtype=np.float32)).all(), "nan output"
+    #     lake_output_path = output_path+target_id
+    #     if not os.path.exists(lake_output_path):
+    #         os.mkdir(lake_output_path)
+    #     output_df.to_feather(lake_output_path+"/PGMTL_outputs.feather")
         
-    loss_output = total_output_npy[~np.isnan(label_mats)]
-    loss_label = label_mats[~np.isnan(label_mats)]
-    mat_rmse = np.sqrt(((loss_output - loss_label) ** 2).mean())
-    mat_csv.append(",".join(["nhdhr_"+target_id," : ".join(["nhdhr_"+ source_id for source_id in top_ids]), str(glm_rmse),str(mat_rmse)] + [str(x) for x in lake_df.iloc[i][feats].values]))
+    # loss_output = total_output_npy[~np.isnan(label_mats)]
+    # loss_label = label_mats[~np.isnan(label_mats)]
+    # mat_rmse = np.sqrt(((loss_output - loss_label) ** 2).mean())
 
-    print("Total rmse=", mat_rmse)
-    spcorr = srcorr_per_lake[targ_ct]
-    rmse_per_lake[targ_ct] = mat_rmse
+    # print("Total rmse=", mat_rmse)
+    # srcorr_per_lake[targ_ct]
+    meta_rmse_per_lake[targ_ct] = np.median(np.sqrt(((y_pred - y_act) ** 2).mean()))
+    srcorr_per_lake[targ_ct] = spearmanr(pred_rmse_per_source_per_lake[:,targ_ct], rmse_per_source_per_lake[:,targ_ct]).correlation
 
 
 
@@ -275,5 +277,7 @@ with open(save_file_path,'w') as file:
 
 
 
+print("median srcorr: ",np.median(srcorr_per_lake))
+print("median meta test RMSE(med): ",np.median(med_meta_rmse_per_lake))
 print("median test RMSE: ",np.median(rmse_per_lake))
 
