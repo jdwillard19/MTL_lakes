@@ -248,6 +248,12 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
     #save model 
     total_output_npy = np.average(output_mats, axis=0)
     if output_to_file:
+        outputm_npy = np.transpose(total_output_npy)
+        label_mat= np.transpose(label_mats)
+        output_df = pd.DataFrame(data=outputm_npy, columns=[str(float(x/2)) for x in range(outputm_npy.shape[1])], index=[str(x)[:10] for x in unique_tst_dates_target]).reset_index()
+        label_df = pd.DataFrame(data=label_mat, columns=[str(float(x/2)) for x in range(label_mat.shape[1])], index=[str(x)[:10] for x in unique_tst_dates_target]).reset_index()
+        output_df.rename(columns={'index': 'depth'})
+        label_df.rename(columns={'index': 'depth'})
         lake_output_path = output_path+target_id
         if not os.path.exists(lake_output_path):
             os.mkdir(lake_output_path)
