@@ -270,8 +270,8 @@ avg_err_array = np.empty(k_arr.shape[0])
 for j in range(k_arr.shape[0]):
     avg_err_array[j] = err_array[:,j].mean()
 
-print("k array tested: ",k_arr)
-print("err per k (select lowest)": ,avg_err_array)
+print("k array tested: ",str(k_arr))
+print("err per k (select lowest): ", avg_err_array)
 # 
 
 
