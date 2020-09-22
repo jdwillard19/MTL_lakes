@@ -45,9 +45,6 @@ model_path = "../../models/metamodel_glm_RMSE_GBR.joblib"
 
 
 metadata = pd.read_feather("../../metadata/lake_metadata_full.feather")
-sites = pd.read_csv('../../metadata/sites_moreThan10ProfilesWithGLM_June2020Update.csv')
-ids = pd.read_csv('../../metadata/pball_site_ids.csv', header=None)
-ids = ids[0].values
 glm_all_f = pd.read_csv("../../results/glm_transfer/RMSE_transfer_glm_pball.csv")
 train_df = pd.read_feather("../../results/transfer_learning/glm/train_rmses_pball.feather")
 result_df = pd.read_csv("../../results/glm_transfer/RMSE_transfer_test_extended_glm.csv")
