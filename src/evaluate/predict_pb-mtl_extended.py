@@ -56,7 +56,7 @@ csv = [ 'target_id,source_id,predicted_rmse , n_obs ,  obs_temp_mean ,  obs_temp
         perc_dif_max_depth ,  perc_dif_surface_area' ]
 for targ_ct, target_id in enumerate(test_lakes): #for each target lake
 	print("target lake ", targ_ct, ":", target_id)
-	lake_df = pd.read_feather("../../metadata/diffs/target_nhdhr_"+ target_id +".feather")
+	lake_df = pd.read_feather("../../metadata/diffs/target_"+ target_id +".feather")
 	lake_df = lake_df[np.isin(lake_df['site_id'], train_lakes_wp)]
 
 
