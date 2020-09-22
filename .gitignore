@@ -82,6 +82,12 @@ target/
 # exclude data from source control by default
 /data/
 
+#exclude hefty metadata diff files
+/metadata/diffs
+
+#large output files
+/results/outputs/
+
 # Mac OS-specific storage files
 .DS_Store
 /.project

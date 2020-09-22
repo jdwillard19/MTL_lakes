@@ -6,30 +6,21 @@ from zipfile import ZipFile
 import sys
 
 
-#mtl data release
-# os.mkdir("../../data/raw/sb_mtl_data_release/ice_flags")
-# os.mkdir("../../data/raw/sb_mtl_data_release/inputs")
-# os.mkdir("../../data/raw/sb_mtl_data_release/pb0_predictions")
-# os.mkdir("../../data/raw/sb_mtl_data_release/predictions")
+#create folders if not existing
+base_path = "../../data/raw/sb_mtl_data_release/"
+path_extensions = ["ice_flags","meteo","predictions","cfg",\
+				   "obs"]
+
+for path_ext in path_extensions:
+	path = base_path + path_ext
+	if not os.path.exists(path):
+		os.mkdir(path)
 
 
 
-# # #pgdl data release
-# os.mkdir("../../data/raw/sb_pgdl_data_release/predictions")
-# os.mkdir("../../data/raw/sb_pgdl_data_release/cfg")
-# os.mkdir("../../data/raw/sb_pgdl_data_release/meteo")
-# os.mkdir("../../data/raw/sb_pgdl_data_release/ice_flags")
-# os.mkdir("../../data/raw/sb_pgdl_data_release/obs")
-# # # os.mkdir("../../metadata")
-
-
-
-
-  
-
-# #obs
-# #predictions
-obs_zips = glob.glob("../../data/raw/sb_pgdl_data_release/*observations.zip")
+#unzip files into their respective directories
+#obs
+obs_zips = glob.glob(base_path + "*observations.zip")
 for file_name in obs_zips:
 	with ZipFile(file_name, 'r') as zip: 
 	    # printing all the contents of the zip file 
@@ -37,12 +28,11 @@ for file_name in obs_zips:
 	  
 	    # extracting all the files 
 	    print('Extracting all the files now...') 
-	    zip.extractall(path="../../data/raw/sb_pgdl_data_release/obs/") 
+	    zip.extractall(base_path + "obs/") 
 	    print('Done!') 
 
-sys.exit()
 #predictions
-pred_zips = glob.glob("../../data/raw/sb_pgdl_data_release/predictions*.zip")
+pred_zips = glob.glob(base_path + "pb0_predictions*.zip")
 for file_name in pred_zips:
 	with ZipFile(file_name, 'r') as zip: 
 	    # printing all the contents of the zip file 
@@ -50,27 +40,14 @@ for file_name in pred_zips:
 	  
 	    # extracting all the files 
 	    print('Extracting all the files now...') 
-	    zip.extractall(path="../../data/raw/sb_pgdl_data_release/predictions") 
+	    zip.extractall(path=base_path+"predictions") 
 	    print('Done!') 
 
-#config files
-nml_zips = glob.glob("../../data/raw/sb_pgdl_data_release/*_nml_files.zip")
-shutil.move("../../data/raw/sb_pgdl_data_release/pb0_config.json", "../../data/raw/sb_pgdl_data_release/cfg/")
-shutil.move("../../data/raw/sb_pgdl_data_release/pball_config.json", "../../data/raw/sb_pgdl_data_release/cfg/")
-for file_name in nml_zips:
-	with ZipFile(file_name, 'r') as zip: 
-	    # printing all the contents of the zip file 
-	    zip.printdir() 
-	  
-	    # extracting all the files 
-	    print('Extracting all the files now...') 
-	    zip.extractall(path="../../data/raw/sb_pgdl_data_release/cfg/") 
-	    print('Done!') 
-
-
+#config files (not a zip anymore, just move)
+shutil.move(base_path+"pb0_config.json", base_path+"cfg/")
 
 #meteo
-input_zips = glob.glob("../../data/raw/sb_pgdl_data_release/inputs*.zip")
+input_zips = glob.glob(base_path+"inputs*.zip")
 for file_name in input_zips:
 	with ZipFile(file_name, 'r') as zip: 
 	    # printing all the contents of the zip file 
@@ -78,12 +55,12 @@ for file_name in input_zips:
 	  
 	    # extracting all the files 
 	    print('Extracting all the files now...') 
-	    zip.extractall(path="../../data/raw/sb_pgdl_data_release/meteo") 
+	    zip.extractall(path=base_path+"meteo/") 
 	    print('Done!') 
 
 
-#ice
-iflag_zips = glob.glob("../../data/raw/sb_pgdl_data_release/ice*.zip")
+#ice flags
+iflag_zips = glob.glob(base_path+"ice*.zip")
 for file_name in iflag_zips:
 	with ZipFile(file_name, 'r') as zip: 
 	    # printing all the contents of the zip file 
@@ -91,6 +68,6 @@ for file_name in iflag_zips:
 	  
 	    # extracting all the files 
 	    print('Extracting all the files now...') 
-	    zip.extractall(path="../../data/raw/sb_pgdl_data_release/ice_flags/") 
+	    zip.extractall(path=base_path+"ice_flags/") 
 	    print('Done!') 
 

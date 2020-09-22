@@ -1,2 +1,0 @@
-/home/kumarv/willa099/miniconda3/envs/pytorch4/lib/python3.6/site-packages/pyarrow/pandas_compat.py:742: FutureWarning: .labels was deprecated in version 0.24.0. Use .codes instead.
-  labels, = index.labels

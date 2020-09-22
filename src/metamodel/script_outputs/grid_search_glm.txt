@@ -1,2 +1,0 @@
-BEST SCORE:  0.39133276101626396
-{'learning_rate': 0.1, 'n_estimators': 1750}

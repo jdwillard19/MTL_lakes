@@ -1,0 +1,8 @@
+../data/phys_operations.py:85: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  exponent = torch.tensor((9.28603523 - (2332.37885/(temp+273.15)))*math.log(10))
+Traceback (most recent call last):
+  File "train_source_model.py", line 577, in <module>
+    pretrain_dict = torch.load(pretrain_path)['state_dict']
+  File "/home/kumarv/willa099/miniconda3/envs/mtl_env/lib/python3.6/site-packages/torch/serialization.py", line 381, in load
+    f = open(f, 'rb')
+FileNotFoundError: [Errno 2] No such file or directory: '../../../models/91595845/pretrain_source_model'

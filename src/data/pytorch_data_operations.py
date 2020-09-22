@@ -9,1381 +9,19 @@ from datetime import date
 import os
 import torch.nn as nn
 from torch.nn.init import xavier_normal_
-from preprocess_functions import preprocess
-from metadata_ops import getMetadata
 import pdb
 from scipy import interpolate
 
 
-def buildLakeDataForRNN_manylakes_finetune2_bugged2(lakename, data_dir, seq_length, n_features, \
-                                            win_shift= 1, begin_loss_ind = 100, \
-                                            test_seq_per_depth=1, \
-                                            outputFullTestMatrix=False, sparseCustom=None, \
-                                            allTestSeq=False, \
-                                            postProcessSplits=True, randomSeed=0):
-    #PARAMETERS
-        #@lakename = string of lake name as the folder of /data/processed/{lakename}
-        #@seq_length = sequence length of LSTM inputs
-        #@n_features = number of physical drivers
-        #@win_shift = days to move in the sliding window for the training set
-        #@begin_loss_ind = index in sequence to begin calculating loss function (to avoid poor accuracy in early parts of the sequence)
-    #load data created in preprocess.py based on lakename
-    debug = False
-    my_path = os.path.abspath(os.path.dirname(__file__))
 
-    feat_mat_raw = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/features.npy"))
-    feat_mat = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_features.npy"))
-
-    #GET TRAIN/TEST HERE
-    #alternative way to divide test/train just by 1/3rd 2/3rd
-    tst = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/test_b.npy"))
-    trn = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/train_b.npy"))
-    full = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/full.npy"))
- 
-    dates = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/dates.npy"))
-
-    #post process train/test splits
-
-    if postProcessSplits:
-        shape0 = trn.shape[0]
-        shape1 = trn.shape[1]
-        trn_flt = trn.flatten()
-        tst_flt = tst.flatten()
-        np.put(trn_flt, np.where(np.isfinite(tst_flt))[0], tst_flt[np.isfinite(tst_flt)])
-        trn_tst = trn_flt.reshape((shape0, shape1))
-        last_tst_col = int(np.round(np.unique(np.where(np.isfinite(trn_tst))[1]).shape[0]/3))
-        unq_col = np.unique(np.where(np.isfinite(trn_tst))[1])
-        trn = np.empty_like(trn_tst)
-        trn[:] = np.nan
-        tst = np.empty_like(trn_tst)
-        tst[:] = np.nan
-        trn[:,unq_col[last_tst_col]:] = trn_tst[:,unq_col[last_tst_col]:]
-        tst[:,:unq_col[last_tst_col]] = trn_tst[:,:unq_col[last_tst_col]]
-
-    np.random.seed(seed=randomSeed)
-    if sparseCustom is not None:
-        n_profiles = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0].shape[0] #n nonzero columns
-        n_profiles_to_zero = n_profiles - sparseCustom #n nonzero columns
-        if n_profiles_to_zero < 0:
-            print("not enough training obs")
-            return((sparseCustom,None,None,None,None,None,None,None,None))
-        profiles_ind = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0] #nonzero columns
-        index = np.random.choice(profiles_ind.shape[0], n_profiles_to_zero, replace=False)  
-        trn[:,profiles_ind[index]] = np.nan
-        # tst = trn
-    #convert dates to numpy datetime64
-    # dates = [date.decode() for date in dates]
-    dates = pd.to_datetime(dates, format='%Y-%m-%d')
-    dates = np.array(dates,dtype=np.datetime64)
-
-    years = dates.astype('datetime64[Y]').astype(int) + 1970
-    assert np.isfinite(feat_mat).all(), "feat_mat has nan at" + str(np.argwhere(np.isfinite(feat_mat)))
-    assert np.isfinite(feat_mat_raw).all(), "feat_mat_raw has nan at" + str(np.argwhere(np.isfinite(feat_mat_raw)))
-    # assert np.isfinite(Y_mat).any(), "Y_mat has nan at" + str(np.argwhere(np.isfinite(Y_mat)))
-
-    n_depths = feat_mat.shape[0]
-    assert feat_mat.shape[0] == feat_mat_raw.shape[0]
-    assert feat_mat.shape[0] == tst.shape[0]
-    assert feat_mat.shape[0] == trn.shape[0]
-    assert feat_mat.shape[1] == tst.shape[1]
-    assert feat_mat.shape[1] == trn.shape[1]
-    assert feat_mat.shape[1] == feat_mat_raw.shape[1]
-    win_shift_tst = begin_loss_ind
-    depth_values = feat_mat_raw[:, 0, 0]
-    assert np.unique(depth_values).size == n_depths
-    udates = dates
-    n_dates = feat_mat.shape[1]
-    seq_per_depth = math.floor(n_dates / seq_length)
-    train_seq_per_depth = seq_per_depth
-    test_seq_per_depth = seq_per_depth
-    win_per_seq = math.floor(seq_length / win_shift) - 1 #windows per sequence (only training)
-    win_per_seq = 2#windows per sequence (only training)
-    tst_win_per_seq = 2 #windows per sequence (only training)
-    n_train_seq = train_seq_per_depth * n_depths * win_per_seq
-    if n_dates % seq_length > 0 and n_dates - seq_length > 0:
-        n_train_seq += n_depths
-
-    if debug:
-        print("n train seq: ", n_train_seq)
-
-    n_train_seq_no_window = train_seq_per_depth * n_depths
-    last_test_date_ind = np.where(np.isfinite(tst))[1][-1]
-    n_test_seq = (test_seq_per_depth) * n_depths * tst_win_per_seq
-    if last_test_date_ind % seq_length > 0 and last_test_date_ind - seq_length > 0:
-        n_test_seq += n_depths
-
-
-    n_all_seq = n_train_seq_no_window 
-
-
-    #build train and test sets, add all data for physical loss
-
-    X_trn = np.empty(shape=(n_train_seq, seq_length, n_features+1)) #features + label
-    X_tst = np.empty(shape=(n_test_seq, seq_length, n_features+1))
-    trn_dates = np.empty(shape=(n_train_seq, seq_length), dtype='datetime64[s]')
-    tst_dates = np.empty(shape=(n_test_seq, seq_length), dtype='datetime64[s]')
-    trn_dates[:] = np.datetime64("NaT")
-    tst_dates[:] = np.datetime64("NaT")
-
-    X_all = np.empty(shape=(n_all_seq, seq_length, n_features+1))
-    all_dates = np.empty(shape=(n_all_seq, seq_length), dtype='datetime64[s]')
-    X_all = np.empty(shape=(n_all_seq, seq_length, n_features+1))
-    X_phys = np.empty(shape=(n_all_seq, seq_length, n_features+1)) #non-normalized features + ice cover flag
-
-    X_trn[:] = np.nan
-    X_tst[:] = np.nan
-    X_all[:] = np.nan
-    X_phys[:] = np.nan
-
-    #seq index for data to be returned
-    tr_seq_ind = 0 
-    ts_seq_ind = 0
-    all_seq_ind = 0
-    #build datasets
-    del_all_seq = 0
-    if debug:
-        print("x_trn shape prior to populating ", X_trn.shape)
-    for s in range(0,train_seq_per_depth):
-        start_index = s*seq_length
-        end_index = (s+1)*seq_length
-        if end_index > n_dates:
-            n_train_seq -= win_per_seq*n_depths
-            n_all_seq -= n_depths
-            del_all_seq += 1
-            X_all = np.delete(X_all, np.arange(X_all.shape[0],X_all.shape[0]-n_depths,-1), axis=0)
-            X_trn = np.delete(X_trn, np.arange(X_trn.shape[0],X_trn.shape[0]-win_per_seq*n_depths,-1), axis=0)
-            trn_dates = np.delete(trn_dates, np.arange(trn_dates.shape[0], trn_dates.shape[0] - n_depths*win_per_seq,-1), axis=0)
-            continue
-        for d in range(0, n_depths):
-            #first do total model data
-            X_all[all_seq_ind, :, :-1] = feat_mat[d,start_index:end_index,:] #feat
-            all_dates[all_seq_ind, :] = dates[start_index:end_index] #dates
-            X_all[all_seq_ind,:,-1] = np.nan #no label
-            X_phys[all_seq_ind, :, :] = feat_mat_raw[d, start_index:end_index,:]
-            all_seq_ind += 1   
-        #now do sliding windows for training data 
-        for w in range(0, win_per_seq):
-            win_start_ind = start_index + w*win_shift
-            win_end_ind = win_start_ind + seq_length
-            if win_end_ind > n_dates:
-                n_train_seq -= 1
-                X_trn = np.delete(X_trn, -1, axis=0)
-                trn_dates = np.delete(trn_dates, -1, axis=0)
-                continue
-            # if win_end_ind > n_dates:
-            #     n_train_seq -= n_depths
-            #     X_trn = np.delete(X_trn, np.arange(X_trn.shape[0], X_trn.shape[0] - n_depths,-1), axis=0)
-            #     trn_dates = np.delete(trn_dates, np.arange(trn_dates.shape[0], trn_dates.shape[0] - n_depths,-1), axis=0)
-            #     continue
-            for d in range(0,n_depths):
-
-                X_trn[tr_seq_ind, :, :-1] = feat_mat[d,win_start_ind:win_end_ind,:]
-                X_trn[tr_seq_ind,:,-1] = trn[d,win_start_ind:win_end_ind]
-                trn_dates[tr_seq_ind,:] = dates[win_start_ind:win_end_ind]
-                tr_seq_ind += 1
-    #final seq starts at end and goes inward [seq_length]
-    if n_dates % seq_length > 0:
-        end_ind = n_dates
-        start_ind = end_ind - seq_length
-        for d in range(0,n_depths):
-            X_trn[tr_seq_ind, :, :-1] = feat_mat[d,start_ind:end_ind,:]
-            X_trn[tr_seq_ind,:,-1] = trn[d,start_ind:end_ind]
-            trn_dates[tr_seq_ind,:] = dates[start_ind:end_ind]
-            tr_seq_ind += 1
-
-    if debug:
-        print("x_trn shape after populating ", X_trn.shape)
-    #assert data was constructed correctly
-    if tr_seq_ind != n_train_seq:
-        extra = n_train_seq - tr_seq_ind
-        n_train_seq -= extra
-        X_trn = np.delete(X_trn, np.arange(X_trn.shape[0],X_trn.shape[0]-extra,-1), axis=0)
-        trn_dates = np.delete(trn_dates, np.arange(X_trn.shape[0],X_trn.shape[0]-extra,-1), axis=0)
-    assert tr_seq_ind == n_train_seq, \
-     "incorrect number of trn seq estimated {} vs actual{}".format(n_train_seq, tr_seq_ind)
-
-    while trn_dates[-1,0] == np.datetime64("NaT"):
-        if debug:
-            print("invalid time?")
-        trn_dates = np.delete(trn_dates, -1, axis=0)
-        X_trn = np.delete(X_trn, -1, axis=0)
-        n_train_seq -= 1
-
-    if n_test_seq != 0:
-        #now test data(maybe bug in this specification of end of range?)
-        for s in range(test_seq_per_depth):
-                start_index = s*seq_length
-                end_index = (s+1)*seq_length
-                if end_index > n_dates:
-                    n_test_seq -= tst_win_per_seq*n_depths
-                    X_tst = np.delete(X_tst, np.arange(X_tst.shape[0], X_tst.shape[0] - tst_win_per_seq*n_depths,-1), axis=0)
-                    tst_dates = np.delete(tst_dates, np.arange(tst_dates.shape[0], tst_dates.shape[0] - tst_win_per_seq*n_depths,-1), axis=0)
-                    continue
-                for w in range(0, tst_win_per_seq):
-                    win_start_ind = start_index+w*win_shift_tst
-                    win_end_ind = win_start_ind + seq_length
-                    if win_end_ind > n_dates:
-                        n_test_seq -= n_depths
-                        X_tst = np.delete(X_tst, np.arange(X_tst.shape[0], X_tst.shape[0] - n_depths,-1), axis=0)
-                        tst_dates = np.delete(tst_dates, np.arange(tst_dates.shape[0], tst_dates.shape[0] - n_depths,-1), axis=0)
-                        continue
-                    for d in range(0, n_depths):
-                        # if win_end_ind > n_dates:
-                        #     n_test_seq -= n_depths
-                        #     X_tst = np.delete(X_tst, np.arange(X_tst.shape[0], X_tst.shape[0] - n_depths,-1), axis=0)
-                        #     tst_dates = np.delete(tst_dates, np.arange(tst_dates.shape[0], tst_dates.shape[0] - n_depths,-1), axis=0)
-                        #     continue
-                        X_tst[ts_seq_ind, :, :-1] = feat_mat[d,win_start_ind:win_end_ind,:]
-                        X_tst[ts_seq_ind,:,-1] = tst[d,win_start_ind:win_end_ind]
-                        tst_dates[ts_seq_ind,:] = dates[win_start_ind:win_end_ind]
-                        ts_seq_ind += 1
-                           #final seq starts at end and goes inward [seq_length]
-        if debug:
-            print("last_test_date_ind: ", last_test_date_ind, ", sl ", seq_length)
-
-        if last_test_date_ind % seq_length > 0 and last_test_date_ind - seq_length > 0:
-            end_ind = last_test_date_ind
-            if not end_ind - seq_length < 0:
-                start_ind = end_ind - seq_length
-                for d in range(0,n_depths):
-                    X_tst[ts_seq_ind, :, :-1] = feat_mat[d,start_ind:end_ind,:]
-                    X_tst[ts_seq_ind,:,-1] = trn[d,start_ind:end_ind]
-                    tst_dates[ts_seq_ind,:] = dates[start_ind:end_ind]
-                    ts_seq_ind += 1
-    while np.isnat(tst_dates[-1,0]):
-        tst_dates = np.delete(tst_dates, -1, axis=0)
-        X_tst = np.delete(X_tst, -1, axis=0)
-
-
-
-
-    #assert data was constructed correctly
-    assert ts_seq_ind == n_test_seq, \
-        "incorrect number of tst seq estimated {} vs actual{}".format(n_test_seq, ts_seq_ind)      
-    #remove sequences with no labels
-    tr_seq_removed = 0
-    trn_del_ind = np.array([], dtype=np.int32)
-    ts_seq_removed = 0
-    tst_del_ind = np.array([], dtype=np.int32)
-
-    #if allTestSeq, combine trn and test unfiltered
-    if allTestSeq:
-        X_tst = np.vstack((X_tst, X_trn))
-        tst_dates = np.vstack((tst_dates, trn_dates))
-        while np.isnat(tst_dates[-1,0]):
-            tst_dates = np.delete(tst_dates, -1, axis=0)
-            X_tst = np.delete(X_tst, -1, axis=0)
-    # full_data = 
-    for i in range(X_trn.shape[0]):
-        if not np.isfinite(X_trn[i,:,:-1]).all():
-            tr_seq_removed += 1
-            trn_del_ind = np.append(trn_del_ind, i)
-        if np.isfinite(X_trn[i,begin_loss_ind:,-1]).any():
-            continue
-        else:
-            tr_seq_removed += 1
-            trn_del_ind = np.append(trn_del_ind, i)
-    if not allTestSeq: #if we don't want to output ALL the data as test
-        for i in range(X_tst.shape[0]):
-            if not np.isfinite(X_tst[i,:,:-1]).all():
-                if debug:
-                    print("nan features?")
-                ts_seq_removed += 1
-                tst_del_ind = np.append(tst_del_ind, i)
-            if np.isfinite(X_tst[i,begin_loss_ind:,-1]).any():
-                continue
-            else:
-                tst_del_ind = np.append(tst_del_ind, i)
-                ts_seq_removed += 1
-            if i > 0:
-                if tst_dates[i-1,0] > tst_dates[i,0]:
-                    if debug:
-                        print("date thing?")
-                    tst_del_ind = np.append(tst_del_ind, i)
-    else:
-        if debug:
-            print("X_tst shape prior to removing nan feats: ",X_tst.shape)
-        for i in range(X_tst.shape[0]):
-            if not np.isfinite(X_tst[i,:,:-1]).all():
-                if debug:
-                    print("nan features?")
-                ts_seq_removed += 1
-                tst_del_ind = np.append(tst_del_ind, i)
-
-    #remove denoted values from trn and tst
-    X_trn_tmp = np.delete(X_trn, trn_del_ind, axis=0)
-    trn_dates_tmp = np.delete(trn_dates, trn_del_ind, axis=0)
-    X_tst_tmp = np.delete(X_tst, tst_del_ind, axis=0)
-    tst_dates_tmp = np.delete(tst_dates, tst_del_ind, axis=0)
-    X_trn = X_trn_tmp
-    trn_dates = trn_dates_tmp
-    X_tst = X_tst_tmp
-    tst_dates = tst_dates_tmp
-
-    # if allTestSeq:
-    #gather unique test dates
-    tst_date_lower_bound = np.where(dates == tst_dates[0][0])[0][0]
-    tst_date_upper_bound = np.where(dates == tst_dates[-1][-1])[0][0]
-
-    unique_tst_dates = dates[tst_date_lower_bound:tst_date_upper_bound+1]
-
-    hyps_dir = data_dir + "geometry" #hypsography file
-    hyps = []
-    my_path = os.path.abspath(os.path.dirname(__file__))
-    if os.path.exists(os.path.join(my_path, hyps_dir)):
-        hyps = getHypsographyManyLakes(hyps_dir, lakename, depth_values)
-
-
-    #add metadata if called for
-    assert np.isfinite(X_all[:,:,:-1]).all(), "X_all has nan"
-    assert np.isfinite(X_trn[:,:,:-1]).all(), "X_trn has nan"
-    assert np.isfinite(X_phys).all(), "X_phys has nan"
-    # assert np.isfinite(all_dates).any(), "all_dates has nan"
-    return (torch.from_numpy(X_trn), trn_dates, torch.from_numpy(X_tst), tst_dates, unique_tst_dates,torch.from_numpy(X_all), 
-            torch.from_numpy(X_phys), all_dates, hyps)
 def buildLakeDataForRNN_manylakes_finetune2(lakename, data_dir, seq_length, n_features, \
                                             win_shift= 1, begin_loss_ind = 100, \
                                             test_seq_per_depth=1,latter_third_test=True, \
-                                            outputFullTestMatrix=False, sparseTen=False, sparseCustom=None, \
-                                            sparse50=False, sparse100=False, realization=0, allTestSeq=False, \
-                                            targetLake = None, includeMetadata=False, \
-                                            oldFeat = False, normGE10=False, postProcessSplits=True, randomSeed=0):
-
-    #NONAN
-    #PARAMETERS
-        #@lakename = string of lake name as the folder of /data/processed/{lakename}
-        #@seq_length = sequence length of LSTM inputs
-        #@n_features = number of physical drivers
-        #@win_shift = days to move in the sliding window for the training set
-        #@begin_loss_ind = index in sequence to begin calculating loss function (to avoid poor accuracy in early parts of the sequence)
-    #load data created in preprocess.py based on lakename
-    debug = False
-    realization = str(realization)
-    my_path = os.path.abspath(os.path.dirname(__file__))
-
-    feat_mat_raw = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/features.npy"))
-    feat_mat = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_features.npy"))
-
-    tst = []
-    trn = []
-
-    #GET TRAIN/TEST HERE
-    #alternative way to divide test/train just by 1/3rd 2/3rd
-    tst = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/test_b.npy"))
-    trn = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/train_b.npy"))
-    if os.path.exists(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/full.npy")):
-        full = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/full.npy"))
-    else:
-        full = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/full_obs.npy"))
-
-
-
-    # if debug:
-    #     print("initial trn: ", trn)
-    #     print("observations: ",np.count_nonzero(~np.isnan(trn)))
-    dates = []
-    if os.path.exists(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/dates.npy")):
-        dates = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/dates.npy"))
-    else:
-        dates = []
-
-    #post process train/test splits
-
-    if postProcessSplits:
-        shape0 = trn.shape[0]
-        shape1 = trn.shape[1]
-        trn_flt = trn.flatten()
-        tst_flt = tst.flatten()
-        np.put(trn_flt, np.where(np.isfinite(tst_flt))[0], tst_flt[np.isfinite(tst_flt)])
-        trn_tst = trn_flt.reshape((shape0, shape1))
-        last_tst_col = int(np.round(np.unique(np.where(np.isfinite(trn_tst))[1]).shape[0]/3))
-        unq_col = np.unique(np.where(np.isfinite(trn_tst))[1])
-        trn = np.empty_like(trn_tst)
-        trn[:] = np.nan
-        tst = np.empty_like(trn_tst)
-        tst[:] = np.nan
-        trn[:,unq_col[last_tst_col]:] = trn_tst[:,unq_col[last_tst_col]:]
-        tst[:,:unq_col[last_tst_col]] = trn_tst[:,:unq_col[last_tst_col]]
-
-    np.random.seed(seed=randomSeed)
-    if sparseCustom is not None:
-        n_profiles = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0].shape[0] #n nonzero columns
-        n_profiles_to_zero = n_profiles - sparseCustom #n nonzero columns
-        if n_profiles_to_zero < 0:
-            print("not enough training obs")
-            return((sparseCustom,None,None,None,None,None,None,None,None))
-        profiles_ind = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0] #nonzero columns
-        index = np.random.choice(profiles_ind.shape[0], n_profiles_to_zero, replace=False)  
-        trn[:,profiles_ind[index]] = np.nan
-        # tst = trn
-    #convert dates to numpy datetime64
-    # dates = [date.decode() for date in dates]
-    dates = pd.to_datetime(dates, format='%Y-%m-%d')
-    dates = np.array(dates,dtype=np.datetime64)
-
-    years = dates.astype('datetime64[Y]').astype(int) + 1970
-    assert np.isfinite(feat_mat).all(), "feat_mat has nan at" + str(np.argwhere(np.isfinite(feat_mat)))
-    assert np.isfinite(feat_mat_raw).all(), "feat_mat_raw has nan at" + str(np.argwhere(np.isfinite(feat_mat_raw)))
-    # assert np.isfinite(Y_mat).any(), "Y_mat has nan at" + str(np.argwhere(np.isfinite(Y_mat)))
-
-    n_depths = feat_mat.shape[0]
-    assert feat_mat.shape[0] == feat_mat_raw.shape[0]
-    assert feat_mat.shape[0] == tst.shape[0]
-    assert feat_mat.shape[0] == trn.shape[0]
-    assert feat_mat.shape[1] == tst.shape[1]
-    assert feat_mat.shape[1] == trn.shape[1]
-    assert feat_mat.shape[1] == feat_mat_raw.shape[1]
-    win_shift_tst = begin_loss_ind
-    depth_values = feat_mat_raw[:, 0, 0]
-    assert np.unique(depth_values).size == n_depths
-    udates = dates
-    n_dates = feat_mat.shape[1]
-    seq_per_depth = math.floor(n_dates / seq_length)
-    train_seq_per_depth = seq_per_depth
-    test_seq_per_depth = seq_per_depth
-    win_per_seq = math.floor(seq_length / win_shift) - 1 #windows per sequence (only training)
-    win_per_seq = 2#windows per sequence (only training)
-    tst_win_per_seq = 2 #windows per sequence (only training)
-    n_train_seq = train_seq_per_depth * n_depths * win_per_seq
-    if n_dates % seq_length > 0 and n_dates - seq_length > 0:
-        n_train_seq += n_depths
-
-    if debug:
-        print("n train seq: ", n_train_seq)
-
-    n_train_seq_no_window = train_seq_per_depth * n_depths
-    last_test_date_ind = np.where(np.isfinite(tst))[1][-1]
-    n_test_seq = (test_seq_per_depth) * n_depths * tst_win_per_seq
-    if last_test_date_ind % seq_length > 0 and last_test_date_ind - seq_length > 0:
-        n_test_seq += n_depths
-
-
-    n_all_seq = n_train_seq_no_window 
-
-
-    #build train and test sets, add all data for physical loss
-
-    X_trn = np.empty(shape=(n_train_seq, seq_length, n_features+1)) #features + label
-    X_tst = np.empty(shape=(n_test_seq, seq_length, n_features+1))
-    trn_dates = np.empty(shape=(n_train_seq, seq_length), dtype='datetime64[s]')
-    tst_dates = np.empty(shape=(n_test_seq, seq_length), dtype='datetime64[s]')
-    trn_dates[:] = np.datetime64("NaT")
-    tst_dates[:] = np.datetime64("NaT")
-
-    X_all = np.empty(shape=(n_all_seq, seq_length, n_features+1))
-    all_dates = np.empty(shape=(n_all_seq, seq_length), dtype='datetime64[s]')
-    X_all = np.empty(shape=(n_all_seq, seq_length, n_features+1))
-    X_phys = np.empty(shape=(n_all_seq, seq_length, n_features+1)) #non-normalized features + ice cover flag
-
-    X_trn[:] = np.nan
-    X_tst[:] = np.nan
-    X_all[:] = np.nan
-    X_phys[:] = np.nan
-
-    #seq index for data to be returned
-    tr_seq_ind = 0 
-    ts_seq_ind = 0
-    all_seq_ind = 0
-    #build datasets
-    del_all_seq = 0
-    if debug:
-        print("x_trn shape prior to populating ", X_trn.shape)
-    # print("obs index: ", np.where(np.isfinite(trn)))
-    for s in range(0,train_seq_per_depth):
-        start_index = s*seq_length
-        end_index = (s+1)*seq_length
-        if end_index > n_dates:
-            n_train_seq -= win_per_seq*n_depths
-            n_all_seq -= n_depths
-            del_all_seq += 1
-            X_all = np.delete(X_all, np.arange(X_all.shape[0],X_all.shape[0]-n_depths,-1), axis=0)
-            X_trn = np.delete(X_trn, np.arange(X_trn.shape[0],X_trn.shape[0]-win_per_seq*n_depths,-1), axis=0)
-            trn_dates = np.delete(trn_dates, np.arange(trn_dates.shape[0], trn_dates.shape[0] - n_depths*win_per_seq,-1), axis=0)
-            continue
-        for d in range(0, n_depths):
-            #first do total model data
-            X_all[all_seq_ind, :, :-1] = feat_mat[d,start_index:end_index,:] #feat
-            all_dates[all_seq_ind, :] = dates[start_index:end_index] #dates
-            X_all[all_seq_ind,:,-1] = np.nan #no label
-            X_phys[all_seq_ind, :, :] = feat_mat_raw[d, start_index:end_index,:]
-            all_seq_ind += 1   
-        #now do sliding windows for training data 
-        for w in range(0, win_per_seq):
-            win_start_ind = start_index + w*win_shift
-            win_end_ind = win_start_ind + seq_length
-
-            for d in range(0,n_depths):
-                if win_end_ind > n_dates:
-                    n_train_seq -= 1
-                    X_trn = np.delete(X_trn, -1, axis=0)
-                    trn_dates = np.delete(trn_dates, -1, axis=0)
-                    continue
-                X_trn[tr_seq_ind, :, :-1] = feat_mat[d,win_start_ind:win_end_ind,:]
-                X_trn[tr_seq_ind,:,-1] = trn[d,win_start_ind:win_end_ind]
-                trn_dates[tr_seq_ind,:] = dates[win_start_ind:win_end_ind]
-                tr_seq_ind += 1
-    #final seq starts at end and goes inward [seq_length]
-    # print("n dates: ", n_dates, ", seq len: ", seq_length)
-    if n_dates % seq_length > 0:
-        end_ind = n_dates
-        start_ind = end_ind - seq_length
-        for d in range(0,n_depths):
-            X_trn[tr_seq_ind, :, :-1] = feat_mat[d,start_ind:end_ind,:]
-            X_trn[tr_seq_ind,:,-1] = trn[d,start_ind:end_ind]
-            trn_dates[tr_seq_ind,:] = dates[start_ind:end_ind]
-            tr_seq_ind += 1
-
-    if debug:
-        print("x_trn shape after populating ", X_trn.shape)
-    #assert data was constructed correctly
-    if tr_seq_ind != n_train_seq:
-        # print("incorrect number of trn seq estimated {} vs actual{}".format(n_train_seq, tr_seq_ind))
-        extra = n_train_seq - tr_seq_ind
-        n_train_seq -= extra
-        X_trn = np.delete(X_trn, np.arange(X_trn.shape[0],X_trn.shape[0]-extra,-1), axis=0)
-        trn_dates = np.delete(trn_dates, np.arange(X_trn.shape[0],X_trn.shape[0]-extra,-1), axis=0)
-    assert tr_seq_ind == n_train_seq, \
-     "incorrect number of trn seq estimated {} vs actual{}".format(n_train_seq, tr_seq_ind)
-
-    while trn_dates[-1,0] == np.datetime64("NaT"):
-        trn_dates = np.delete(trn_dates, -1, axis=0)
-        X_trn = np.delete(X_trn, -1, axis=0)
-
-    if n_test_seq != 0:
-        #now test data(maybe bug in this specification of end of range?)
-        for s in range(test_seq_per_depth):
-                start_index = s*seq_length
-                end_index = (s+1)*seq_length
-                if end_index > n_dates:
-                    n_test_seq -= tst_win_per_seq*n_depths
-                    X_tst = np.delete(X_tst, np.arange(X_tst.shape[0], X_tst.shape[0] - tst_win_per_seq*n_depths,-1), axis=0)
-                    tst_dates = np.delete(tst_dates, np.arange(tst_dates.shape[0], tst_dates.shape[0] - tst_win_per_seq*n_depths,-1), axis=0)
-                    continue
-                for w in range(0, tst_win_per_seq):
-                    win_start_ind = start_index+w*win_shift_tst
-                    win_end_ind = win_start_ind + seq_length
-                    if win_end_ind > n_dates:
-                        n_test_seq -= n_depths
-                        X_tst = np.delete(X_tst, np.arange(X_tst.shape[0], X_tst.shape[0] - n_depths,-1), axis=0)
-                        tst_dates = np.delete(tst_dates, np.arange(tst_dates.shape[0], tst_dates.shape[0] - n_depths,-1), axis=0)
-                        continue
-                    for d in range(0, n_depths):
-                        X_tst[ts_seq_ind, :, :-1] = feat_mat[d,win_start_ind:win_end_ind,:]
-                        X_tst[ts_seq_ind,:,-1] = tst[d,win_start_ind:win_end_ind]
-                        tst_dates[ts_seq_ind,:] = dates[win_start_ind:win_end_ind]
-                        ts_seq_ind += 1
-                           #final seq starts at end and goes inward [seq_length]
-        if debug:
-            print("last_test_date_ind: ", last_test_date_ind, ", sl ", seq_length)
-
-        if last_test_date_ind % seq_length > 0 and last_test_date_ind - seq_length > 0:
-            end_ind = last_test_date_ind
-            if not end_ind - seq_length < 0:
-                start_ind = end_ind - seq_length
-                for d in range(0,n_depths):
-                    X_tst[ts_seq_ind, :, :-1] = feat_mat[d,start_ind:end_ind,:]
-                    X_tst[ts_seq_ind,:,-1] = trn[d,start_ind:end_ind]
-                    tst_dates[ts_seq_ind,:] = dates[start_ind:end_ind]
-                    ts_seq_ind += 1
-    while np.isnat(tst_dates[-1,0]):
-        if debug:
-            print("NaT?")
-            pdb.set_trace()
-        tst_dates = np.delete(tst_dates, -1, axis=0)
-        X_tst = np.delete(X_tst, -1, axis=0)
-
-
-
-
-    #assert data was constructed correctly
-    assert ts_seq_ind == n_test_seq, \
-        "incorrect number of tst seq estimated {} vs actual{}".format(n_test_seq, ts_seq_ind)      
-    #remove sequences with no labels
-    tr_seq_removed = 0
-    trn_del_ind = np.array([], dtype=np.int32)
-    ts_seq_removed = 0
-    tst_del_ind = np.array([], dtype=np.int32)
-
-    #if allTestSeq, combine trn and test unfiltered
-    if allTestSeq:
-        X_tst = np.vstack((X_tst, X_trn))
-        tst_dates = np.vstack((tst_dates, trn_dates))
-        while np.isnat(tst_dates[-1,0]):
-            tst_dates = np.delete(tst_dates, -1, axis=0)
-            X_tst = np.delete(X_tst, -1, axis=0)
-    # full_data = 
-    for i in range(X_trn.shape[0]):
-        # print("seq ",i," nz-val-count:",np.count_nonzero(~np.isnan(X_trn[i,:,-1])))
-        if not np.isfinite(X_trn[i,:,:-1]).all():
-            # print("MISSING FEAT REMOVE")
-            tr_seq_removed += 1
-            trn_del_ind = np.append(trn_del_ind, i)
-        if np.isfinite(X_trn[i,begin_loss_ind:,-1]).any():
-            # print("HAS OBSERVE, CONTINUE")
-            continue
-        else:
-            # print(X_trn[i,:,-1])
-            # print("NO OBSERVE, REMOVE")
-            tr_seq_removed += 1
-            trn_del_ind = np.append(trn_del_ind, i)
-    if not allTestSeq: #if we don't want to output ALL the data as test
-        for i in range(X_tst.shape[0]):
-            if not np.isfinite(X_tst[i,:,:-1]).all():
-                ts_seq_removed += 1
-                tst_del_ind = np.append(tst_del_ind, i)
-            if np.isfinite(X_tst[i,begin_loss_ind:,-1]).any():
-                continue
-            else:
-                tst_del_ind = np.append(tst_del_ind, i)
-                ts_seq_removed += 1
-            if i > 0:
-                if tst_dates[i-1,0] > tst_dates[i,0]:
-                    if debug:
-                        print("date thing?")
-                    tst_del_ind = np.append(tst_del_ind, i)
-    else:
-        for i in range(X_tst.shape[0]):
-            if not np.isfinite(X_tst[i,:,:-1]).all():
-                ts_seq_removed += 1
-                tst_del_ind = np.append(tst_del_ind, i)
-    #remove denoted values from trn and tst
-    X_trn_tmp = np.delete(X_trn, trn_del_ind, axis=0)
-    trn_dates_tmp = np.delete(trn_dates, trn_del_ind, axis=0)
-    X_tst_tmp = np.delete(X_tst, tst_del_ind, axis=0)
-    tst_dates_tmp = np.delete(tst_dates, tst_del_ind, axis=0)
-    X_trn = X_trn_tmp
-    trn_dates = trn_dates_tmp
-    X_tst = X_tst_tmp
-    tst_dates = tst_dates_tmp
-    #gather unique test dates
-    tst_date_lower_bound = np.where(dates == tst_dates[0][0])[0][0]
-    tst_date_upper_bound = np.where(dates == tst_dates[-1][-1])[0][0]
-
-    unique_tst_dates = dates[tst_date_lower_bound:tst_date_upper_bound]
-
-    hyps_dir = data_dir + "geometry" #hypsography file
-    hyps = []
-    my_path = os.path.abspath(os.path.dirname(__file__))
-    if os.path.exists(os.path.join(my_path, hyps_dir)):
-        hyps = getHypsographyManyLakes(hyps_dir, lakename, depth_values)
-
-
-    #add metadata if called for
-    if includeMetadata:
-        metadata = getMetadata(lakename)
-    assert np.isfinite(X_all[:,:,:-1]).all(), "X_all has nan"
-    assert np.isfinite(X_trn[:,:,:-1]).all(), "X_trn has nan"
-    assert np.isfinite(X_phys).all(), "X_phys has nan"
-    # assert np.isfinite(all_dates).any(), "all_dates has nan"
-    return (torch.from_numpy(X_trn), trn_dates, torch.from_numpy(X_tst), tst_dates, unique_tst_dates,torch.from_numpy(X_all), 
-            torch.from_numpy(X_phys), all_dates, hyps)
-
-
-def buildLakeDataForRNN_manylakes_finetune2_backup072620(lakename, data_dir, seq_length, n_features, \
-                                            win_shift= 1, begin_loss_ind = 100, \
-                                            test_seq_per_depth=1,latter_third_test=True, \
-                                            outputFullTestMatrix=False, sparseTen=False, sparseCustom=None, \
-                                            sparse50=False, sparse100=False, realization=0, allTestSeq=False, \
-                                            targetLake = None, includeMetadata=False, \
-                                            oldFeat = False, normGE10=False, postProcessSplits=True, randomSeed=0):
-
-    #NONAN
-    #PARAMETERS
-        #@lakename = string of lake name as the folder of /data/processed/{lakename}
-        #@seq_length = sequence length of LSTM inputs
-        #@n_features = number of physical drivers
-        #@win_shift = days to move in the sliding window for the training set
-        #@begin_loss_ind = index in sequence to begin calculating loss function (to avoid poor accuracy in early parts of the sequence)
-    #load data created in preprocess.py based on lakename
-    debug = False
-    realization = str(realization)
-    my_path = os.path.abspath(os.path.dirname(__file__))
-
-    feat_mat_raw = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/features.npy"))
-    feat_mat = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_features.npy"))
-
-    tst = []
-    trn = []
-
-    #GET TRAIN/TEST HERE
-    #alternative way to divide test/train just by 1/3rd 2/3rd
-    tst = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/test_b.npy"))
-    trn = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/train_b.npy"))
-    if os.path.exists(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/full.npy")):
-        full = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/full.npy"))
-    else:
-        full = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/full_obs.npy"))
-
-
-
-    # if debug:
-    #     print("initial trn: ", trn)
-    #     print("observations: ",np.count_nonzero(~np.isnan(trn)))
-    dates = []
-    if os.path.exists(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/dates.npy")):
-        dates = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/dates.npy"))
-    else:
-        dates = []
-
-    #post process train/test splits
-
-    if postProcessSplits:
-        shape0 = trn.shape[0]
-        shape1 = trn.shape[1]
-        trn_flt = trn.flatten()
-        tst_flt = tst.flatten()
-        np.put(trn_flt, np.where(np.isfinite(tst_flt))[0], tst_flt[np.isfinite(tst_flt)])
-        trn_tst = trn_flt.reshape((shape0, shape1))
-        last_tst_col = int(np.round(np.unique(np.where(np.isfinite(trn_tst))[1]).shape[0]/3))
-        unq_col = np.unique(np.where(np.isfinite(trn_tst))[1])
-        trn = np.empty_like(trn_tst)
-        trn[:] = np.nan
-        tst = np.empty_like(trn_tst)
-        tst[:] = np.nan
-        trn[:,unq_col[last_tst_col]:] = trn_tst[:,unq_col[last_tst_col]:]
-        tst[:,:unq_col[last_tst_col]] = trn_tst[:,:unq_col[last_tst_col]]
-
-    np.random.seed(seed=randomSeed)
-    if sparseCustom is not None:
-        n_profiles = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0].shape[0] #n nonzero columns
-        n_profiles_to_zero = n_profiles - sparseCustom #n nonzero columns
-        if n_profiles_to_zero < 0:
-            print("not enough training obs")
-            return((sparseCustom,None,None,None,None,None,None,None,None))
-        profiles_ind = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0] #nonzero columns
-        index = np.random.choice(profiles_ind.shape[0], n_profiles_to_zero, replace=False)  
-        trn[:,profiles_ind[index]] = np.nan
-        # tst = trn
-    #convert dates to numpy datetime64
-    # dates = [date.decode() for date in dates]
-    dates = pd.to_datetime(dates, format='%Y-%m-%d')
-    dates = np.array(dates,dtype=np.datetime64)
-
-    years = dates.astype('datetime64[Y]').astype(int) + 1970
-    assert np.isfinite(feat_mat).all(), "feat_mat has nan at" + str(np.argwhere(np.isfinite(feat_mat)))
-    assert np.isfinite(feat_mat_raw).all(), "feat_mat_raw has nan at" + str(np.argwhere(np.isfinite(feat_mat_raw)))
-    # assert np.isfinite(Y_mat).any(), "Y_mat has nan at" + str(np.argwhere(np.isfinite(Y_mat)))
-
-    n_depths = feat_mat.shape[0]
-    assert feat_mat.shape[0] == feat_mat_raw.shape[0]
-    assert feat_mat.shape[0] == tst.shape[0]
-    assert feat_mat.shape[0] == trn.shape[0]
-    assert feat_mat.shape[1] == tst.shape[1]
-    assert feat_mat.shape[1] == trn.shape[1]
-    assert feat_mat.shape[1] == feat_mat_raw.shape[1]
-    win_shift_tst = begin_loss_ind
-    depth_values = feat_mat_raw[:, 0, 0]
-    assert np.unique(depth_values).size == n_depths
-    udates = dates
-    n_dates = feat_mat.shape[1]
-    seq_per_depth = math.floor(n_dates / seq_length)
-    train_seq_per_depth = seq_per_depth
-    test_seq_per_depth = seq_per_depth
-    win_per_seq = math.floor(seq_length / win_shift) - 1 #windows per sequence (only training)
-    win_per_seq = 2#windows per sequence (only training)
-    tst_win_per_seq = 2 #windows per sequence (only training)
-    n_train_seq = train_seq_per_depth * n_depths * win_per_seq
-    if n_dates % seq_length > 0 and n_dates - seq_length > 0:
-        n_train_seq += n_depths
-
-    if debug:
-        print("n train seq: ", n_train_seq)
-
-    n_train_seq_no_window = train_seq_per_depth * n_depths
-    last_test_date_ind = np.where(np.isfinite(tst))[1][-1]
-    n_test_seq = (test_seq_per_depth) * n_depths * tst_win_per_seq
-    if last_test_date_ind % seq_length > 0 and last_test_date_ind - seq_length > 0:
-        n_test_seq += n_depths
-
-
-    n_all_seq = n_train_seq_no_window 
-
-
-    #build train and test sets, add all data for physical loss
-
-    X_trn = np.empty(shape=(n_train_seq, seq_length, n_features+1)) #features + label
-    X_tst = np.empty(shape=(n_test_seq, seq_length, n_features+1))
-    trn_dates = np.empty(shape=(n_train_seq, seq_length), dtype='datetime64[s]')
-    tst_dates = np.empty(shape=(n_test_seq, seq_length), dtype='datetime64[s]')
-    trn_dates[:] = np.datetime64("NaT")
-    tst_dates[:] = np.datetime64("NaT")
-
-    X_all = np.empty(shape=(n_all_seq, seq_length, n_features+1))
-    all_dates = np.empty(shape=(n_all_seq, seq_length), dtype='datetime64[s]')
-    X_all = np.empty(shape=(n_all_seq, seq_length, n_features+1))
-    X_phys = np.empty(shape=(n_all_seq, seq_length, n_features+1)) #non-normalized features + ice cover flag
-
-    X_trn[:] = np.nan
-    X_tst[:] = np.nan
-    X_all[:] = np.nan
-    X_phys[:] = np.nan
-
-    #seq index for data to be returned
-    tr_seq_ind = 0 
-    ts_seq_ind = 0
-    all_seq_ind = 0
-    #build datasets
-    del_all_seq = 0
-    if debug:
-        print("x_trn shape prior to populating ", X_trn.shape)
-    # print("obs index: ", np.where(np.isfinite(trn)))
-    for s in range(0,train_seq_per_depth):
-        start_index = s*seq_length
-        end_index = (s+1)*seq_length
-        if end_index > n_dates:
-            n_train_seq -= win_per_seq*n_depths
-            n_all_seq -= n_depths
-            del_all_seq += 1
-            X_all = np.delete(X_all, np.arange(X_all.shape[0],X_all.shape[0]-n_depths,-1), axis=0)
-            X_trn = np.delete(X_trn, np.arange(X_trn.shape[0],X_trn.shape[0]-win_per_seq*n_depths,-1), axis=0)
-            trn_dates = np.delete(trn_dates, np.arange(trn_dates.shape[0], trn_dates.shape[0] - n_depths*win_per_seq,-1), axis=0)
-            continue
-        for d in range(0, n_depths):
-            #first do total model data
-            X_all[all_seq_ind, :, :-1] = feat_mat[d,start_index:end_index,:] #feat
-            all_dates[all_seq_ind, :] = dates[start_index:end_index] #dates
-            X_all[all_seq_ind,:,-1] = np.nan #no label
-            X_phys[all_seq_ind, :, :] = feat_mat_raw[d, start_index:end_index,:]
-            all_seq_ind += 1   
-        #now do sliding windows for training data 
-        for w in range(0, win_per_seq):
-            win_start_ind = start_index + w*win_shift
-            win_end_ind = win_start_ind + seq_length
-
-            for d in range(0,n_depths):
-                if win_end_ind > n_dates:
-                    n_train_seq -= 1
-                    X_trn = np.delete(X_trn, -1, axis=0)
-                    trn_dates = np.delete(trn_dates, -1, axis=0)
-                    continue
-                X_trn[tr_seq_ind, :, :-1] = feat_mat[d,win_start_ind:win_end_ind,:]
-                X_trn[tr_seq_ind,:,-1] = trn[d,win_start_ind:win_end_ind]
-                trn_dates[tr_seq_ind,:] = dates[win_start_ind:win_end_ind]
-                tr_seq_ind += 1
-    #final seq starts at end and goes inward [seq_length]
-    # print("n dates: ", n_dates, ", seq len: ", seq_length)
-    if n_dates % seq_length > 0:
-        end_ind = n_dates
-        start_ind = end_ind - seq_length
-        for d in range(0,n_depths):
-            X_trn[tr_seq_ind, :, :-1] = feat_mat[d,start_ind:end_ind,:]
-            X_trn[tr_seq_ind,:,-1] = trn[d,start_ind:end_ind]
-            trn_dates[tr_seq_ind,:] = dates[start_ind:end_ind]
-            tr_seq_ind += 1
-
-    if debug:
-        print("x_trn shape after populating ", X_trn.shape)
-    #assert data was constructed correctly
-    if tr_seq_ind != n_train_seq:
-        # print("incorrect number of trn seq estimated {} vs actual{}".format(n_train_seq, tr_seq_ind))
-        extra = n_train_seq - tr_seq_ind
-        n_train_seq -= extra
-        X_trn = np.delete(X_trn, np.arange(X_trn.shape[0],X_trn.shape[0]-extra,-1), axis=0)
-        trn_dates = np.delete(trn_dates, np.arange(X_trn.shape[0],X_trn.shape[0]-extra,-1), axis=0)
-    assert tr_seq_ind == n_train_seq, \
-     "incorrect number of trn seq estimated {} vs actual{}".format(n_train_seq, tr_seq_ind)
-
-    while trn_dates[-1,0] == np.datetime64("NaT"):
-        trn_dates = np.delete(trn_dates, -1, axis=0)
-        X_trn = np.delete(X_trn, -1, axis=0)
-
-    if n_test_seq != 0:
-        #now test data(maybe bug in this specification of end of range?)
-        for s in range(test_seq_per_depth):
-                start_index = s*seq_length
-                end_index = (s+1)*seq_length
-                if end_index > n_dates:
-                    n_test_seq -= tst_win_per_seq*n_depths
-                    X_tst = np.delete(X_tst, np.arange(X_tst.shape[0], X_tst.shape[0] - tst_win_per_seq*n_depths,-1), axis=0)
-                    tst_dates = np.delete(tst_dates, np.arange(tst_dates.shape[0], tst_dates.shape[0] - tst_win_per_seq*n_depths,-1), axis=0)
-                    continue
-                for w in range(0, tst_win_per_seq):
-                    win_start_ind = start_index+w*win_shift_tst
-                    win_end_ind = win_start_ind + seq_length
-                    if win_end_ind > n_dates:
-                        n_test_seq -= n_depths
-                        X_tst = np.delete(X_tst, np.arange(X_tst.shape[0], X_tst.shape[0] - n_depths,-1), axis=0)
-                        tst_dates = np.delete(tst_dates, np.arange(tst_dates.shape[0], tst_dates.shape[0] - n_depths,-1), axis=0)
-                        continue
-                    for d in range(0, n_depths):
-                        X_tst[ts_seq_ind, :, :-1] = feat_mat[d,win_start_ind:win_end_ind,:]
-                        X_tst[ts_seq_ind,:,-1] = tst[d,win_start_ind:win_end_ind]
-                        tst_dates[ts_seq_ind,:] = dates[win_start_ind:win_end_ind]
-                        ts_seq_ind += 1
-                           #final seq starts at end and goes inward [seq_length]
-        if debug:
-            print("last_test_date_ind: ", last_test_date_ind, ", sl ", seq_length)
-
-        if last_test_date_ind % seq_length > 0 and last_test_date_ind - seq_length > 0:
-            end_ind = last_test_date_ind
-            if not end_ind - seq_length < 0:
-                start_ind = end_ind - seq_length
-                for d in range(0,n_depths):
-                    X_tst[ts_seq_ind, :, :-1] = feat_mat[d,start_ind:end_ind,:]
-                    X_tst[ts_seq_ind,:,-1] = trn[d,start_ind:end_ind]
-                    tst_dates[ts_seq_ind,:] = dates[start_ind:end_ind]
-                    ts_seq_ind += 1
-    while np.isnat(tst_dates[-1,0]):
-        if debug:
-            print("NaT?")
-            pdb.set_trace()
-        tst_dates = np.delete(tst_dates, -1, axis=0)
-        X_tst = np.delete(X_tst, -1, axis=0)
-
-
-
-
-    #assert data was constructed correctly
-    assert ts_seq_ind == n_test_seq, \
-        "incorrect number of tst seq estimated {} vs actual{}".format(n_test_seq, ts_seq_ind)      
-    #remove sequences with no labels
-    tr_seq_removed = 0
-    trn_del_ind = np.array([], dtype=np.int32)
-    ts_seq_removed = 0
-    tst_del_ind = np.array([], dtype=np.int32)
-
-    #if allTestSeq, combine trn and test unfiltered
-    if allTestSeq:
-        X_tst = np.vstack((X_tst, X_trn))
-        tst_dates = np.vstack((tst_dates, trn_dates))
-        while np.isnat(tst_dates[-1,0]):
-            tst_dates = np.delete(tst_dates, -1, axis=0)
-            X_tst = np.delete(X_tst, -1, axis=0)
-    # full_data = 
-    for i in range(X_trn.shape[0]):
-        # print("seq ",i," nz-val-count:",np.count_nonzero(~np.isnan(X_trn[i,:,-1])))
-        if not np.isfinite(X_trn[i,:,:-1]).all():
-            # print("MISSING FEAT REMOVE")
-            tr_seq_removed += 1
-            trn_del_ind = np.append(trn_del_ind, i)
-        if np.isfinite(X_trn[i,begin_loss_ind:,-1]).any():
-            # print("HAS OBSERVE, CONTINUE")
-            continue
-        else:
-            # print(X_trn[i,:,-1])
-            # print("NO OBSERVE, REMOVE")
-            tr_seq_removed += 1
-            trn_del_ind = np.append(trn_del_ind, i)
-    if not allTestSeq: #if we don't want to output ALL the data as test
-        for i in range(X_tst.shape[0]):
-            if not np.isfinite(X_tst[i,:,:-1]).all():
-                ts_seq_removed += 1
-                tst_del_ind = np.append(tst_del_ind, i)
-            if np.isfinite(X_tst[i,begin_loss_ind:,-1]).any():
-                continue
-            else:
-                tst_del_ind = np.append(tst_del_ind, i)
-                ts_seq_removed += 1
-            if i > 0:
-                if tst_dates[i-1,0] > tst_dates[i,0]:
-                    if debug:
-                        print("date thing?")
-                    tst_del_ind = np.append(tst_del_ind, i)
-    else:
-        for i in range(X_tst.shape[0]):
-            if not np.isfinite(X_tst[i,:,:-1]).all():
-                ts_seq_removed += 1
-                tst_del_ind = np.append(tst_del_ind, i)
-    #remove denoted values from trn and tst
-    X_trn_tmp = np.delete(X_trn, trn_del_ind, axis=0)
-    trn_dates_tmp = np.delete(trn_dates, trn_del_ind, axis=0)
-    X_tst_tmp = np.delete(X_tst, tst_del_ind, axis=0)
-    tst_dates_tmp = np.delete(tst_dates, tst_del_ind, axis=0)
-    X_trn = X_trn_tmp
-    trn_dates = trn_dates_tmp
-    X_tst = X_tst_tmp
-    tst_dates = tst_dates_tmp
-    #gather unique test dates
-    tst_date_lower_bound = np.where(dates == tst_dates[0][0])[0][0]
-    tst_date_upper_bound = np.where(dates == tst_dates[-1][-1])[0][0]
-
-    unique_tst_dates = dates[tst_date_lower_bound:tst_date_upper_bound]
-
-    hyps_dir = data_dir + "geometry" #hypsography file
-    hyps = []
-    my_path = os.path.abspath(os.path.dirname(__file__))
-    if os.path.exists(os.path.join(my_path, hyps_dir)):
-        hyps = getHypsographyManyLakes(hyps_dir, lakename, depth_values)
-
-
-    #add metadata if called for
-    if includeMetadata:
-        metadata = getMetadata(lakename)
-    assert np.isfinite(X_all[:,:,:-1]).all(), "X_all has nan"
-    assert np.isfinite(X_trn[:,:,:-1]).all(), "X_trn has nan"
-    assert np.isfinite(X_phys).all(), "X_phys has nan"
-    # assert np.isfinite(all_dates).any(), "all_dates has nan"
-    return (torch.from_numpy(X_trn), trn_dates, torch.from_numpy(X_tst), tst_dates, unique_tst_dates,torch.from_numpy(X_all), 
-            torch.from_numpy(X_phys), all_dates, hyps)
-# def buildLakeDataForRNN_manylakes_finetune2_bugged(lakename, data_dir, seq_length, n_features, \
-#                                             win_shift= 1, begin_loss_ind = 100, \
-#                                             test_seq_per_depth=1,latter_third_test=True, \
-#                                             outputFullTestMatrix=False, sparseTen=False, sparseCustom=None, \
-#                                             sparse50=False, sparse100=False, realization=0, allTestSeq=False, \
-#                                             targetLake = None, includeMetadata=False, \
-#                                             oldFeat = False, normGE10=False, postProcessSplits=True, randomSeed=0):
-#     #PARAMETERS
-#         #@lakename = string of lake name as the folder of /data/processed/{lakename}
-#         #@seq_length = sequence length of LSTM inputs
-#         #@n_features = number of physical drivers
-#         #@win_shift = days to move in the sliding window for the training set
-#         #@begin_loss_ind = index in sequence to begin calculating loss function (to avoid poor accuracy in early parts of the sequence)
-#     #load data created in preprocess.py based on lakename
-#     debug = False
-#     realization = str(realization)
-#     my_path = os.path.abspath(os.path.dirname(__file__))
-
-#     feat_mat_raw = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/features.npy"))
-#     feat_mat = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_features.npy"))
-
-#     # if oldFeat:
-#     #     feat_mat = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_features.npy"))
-#     # else:
-#     #     if os.path.exists(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_features_normAll.npy")):
-#     #         feat_mat = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_features_normAll.npy"))
-#     # if normGE10:
-#     #     feat_mat = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_featuresGr10.npy"))
-#     tst = []
-#     trn = []
-
-#     #GET TRAIN/TEST HERE
-#     #alternative way to divide test/train just by 1/3rd 2/3rd
-#     tst = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/test_b.npy"))
-#     trn = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/train_b.npy"))
-#     if os.path.exists(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/full.npy")):
-#         full = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/full.npy"))
-#     else:
-#         full = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/full_obs.npy"))
-#     # if sparseTen:
-#     #     trn = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/train10_"+realization+".npy"))
-#     # if sparse50:
-#     #     trn = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/train_b.npy"))
-#     #     n_profiles = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0].shape[0] #n nonzero columns
-#     #     n_profiles_to_zero = n_profiles - 50 #n nonzero columns
-#     #     profiles_ind = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0] #nonzero columns
-#     #     index = np.random.choice(profiles_ind.shape[0], n_profiles_to_zero, replace=False)  
-#     #     trn[:,profiles_ind[index]] = np.nan
-#     #     tst = trn
-#     # if sparse100:
-#     #     #randomly remove data so there are 100 profiles remaining
-#     #     trn = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/train_b.npy"))
-#     #     n_profiles = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0].shape[0] #n nonzero columns
-#     #     n_profiles_to_zero = n_profiles - 100 #n nonzero columns
-#     #     profiles_ind = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0] #nonzero columns
-#     #     index = np.random.choice(profiles_ind.shape[0], n_profiles_to_zero, replace=False)  
-#     #     trn[:,profiles_ind[index]] = np.nan
-#     #     tst = trn
-
-
-#     # if targetLake is not None:
-#     #     feat_mat_raw = np.load(os.path.join(my_path, data_dir +"features_"+targetLake+".npy"))
-#     #     feat_mat = np.load(os.path.join(my_path, data_dir + "processed_features_"+targetLake+".npy"))
-#     # if debug:
-#     #     print("initial trn: ", trn)
-#     #     print("observations: ",np.count_nonzero(~np.isnan(trn)))
-#     dates = []
-#     if os.path.exists(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/dates.npy")):
-#         dates = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/dates.npy"))
-#     else:
-#         dates = []
-
-#     #post process train/test splits
-
-#     if postProcessSplits:
-#         shape0 = trn.shape[0]
-#         shape1 = trn.shape[1]
-#         trn_flt = trn.flatten()
-#         tst_flt = tst.flatten()
-#         np.put(trn_flt, np.where(np.isfinite(tst_flt))[0], tst_flt[np.isfinite(tst_flt)])
-#         trn_tst = trn_flt.reshape((shape0, shape1))
-#         last_tst_col = int(np.round(np.unique(np.where(np.isfinite(trn_tst))[1]).shape[0]/3))
-#         unq_col = np.unique(np.where(np.isfinite(trn_tst))[1])
-#         trn = np.empty_like(trn_tst)
-#         trn[:] = np.nan
-#         tst = np.empty_like(trn_tst)
-#         tst[:] = np.nan
-#         trn[:,unq_col[last_tst_col]:] = trn_tst[:,unq_col[last_tst_col]:]
-#         tst[:,:unq_col[last_tst_col]] = trn_tst[:,:unq_col[last_tst_col]]
-
-#     np.random.seed(seed=randomSeed)
-#     if sparseCustom is not None:
-#         n_profiles = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0].shape[0] #n nonzero columns
-#         n_profiles_to_zero = n_profiles - sparseCustom #n nonzero columns
-#         if n_profiles_to_zero < 0:
-#             print("not enough training obs")
-#             return((sparseCustom,None,None,None,None,None,None,None,None))
-#         profiles_ind = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0] #nonzero columns
-#         index = np.random.choice(profiles_ind.shape[0], n_profiles_to_zero, replace=False)  
-#         trn[:,profiles_ind[index]] = np.nan
-#         # tst = trn
-#     #convert dates to numpy datetime64
-#     # dates = [date.decode() for date in dates]
-#     dates = pd.to_datetime(dates, format='%Y-%m-%d')
-#     dates = np.array(dates,dtype=np.datetime64)
-
-#     years = dates.astype('datetime64[Y]').astype(int) + 1970
-#     assert np.isfinite(feat_mat).all(), "feat_mat has nan at" + str(np.argwhere(np.isfinite(feat_mat)))
-#     assert np.isfinite(feat_mat_raw).all(), "feat_mat_raw has nan at" + str(np.argwhere(np.isfinite(feat_mat_raw)))
-#     # assert np.isfinite(Y_mat).any(), "Y_mat has nan at" + str(np.argwhere(np.isfinite(Y_mat)))
-
-#     n_depths = feat_mat.shape[0]
-#     assert feat_mat.shape[0] == feat_mat_raw.shape[0]
-#     assert feat_mat.shape[0] == tst.shape[0]
-#     assert feat_mat.shape[0] == trn.shape[0]
-#     assert feat_mat.shape[1] == tst.shape[1]
-#     assert feat_mat.shape[1] == trn.shape[1]
-#     assert feat_mat.shape[1] == feat_mat_raw.shape[1]
-#     win_shift_tst = begin_loss_ind
-#     depth_values = feat_mat_raw[:, 0, 0]
-#     assert np.unique(depth_values).size == n_depths
-#     udates = dates
-#     n_dates = feat_mat.shape[1]
-#     seq_per_depth = math.floor(n_dates / seq_length)
-#     train_seq_per_depth = seq_per_depth
-#     test_seq_per_depth = seq_per_depth
-#     win_per_seq = math.floor(seq_length / win_shift) - 1 #windows per sequence (only training)
-#     win_per_seq = 2#windows per sequence (only training)
-#     tst_win_per_seq = 2 #windows per sequence (only training)
-#     n_train_seq = train_seq_per_depth * n_depths * win_per_seq
-#     if n_dates % seq_length > 0 and n_dates - seq_length > 0:
-#         n_train_seq += n_depths
-
-#     if debug:
-#         print("n train seq: ", n_train_seq)
-
-#     n_train_seq_no_window = train_seq_per_depth * n_depths
-#     last_test_date_ind = np.where(np.isfinite(tst))[1][-1]
-#     n_test_seq = (test_seq_per_depth) * n_depths * tst_win_per_seq
-#     if last_test_date_ind % seq_length > 0 and last_test_date_ind - seq_length > 0:
-#         n_test_seq += n_depths
-
-
-#     n_all_seq = n_train_seq_no_window 
-
-
-#     #build train and test sets, add all data for physical loss
-
-#     X_trn = np.empty(shape=(n_train_seq, seq_length, n_features+1)) #features + label
-#     X_tst = np.empty(shape=(n_test_seq, seq_length, n_features+1))
-#     trn_dates = np.empty(shape=(n_train_seq, seq_length), dtype='datetime64[s]')
-#     tst_dates = np.empty(shape=(n_test_seq, seq_length), dtype='datetime64[s]')
-#     trn_dates[:] = np.datetime64("NaT")
-#     tst_dates[:] = np.datetime64("NaT")
-
-#     X_all = np.empty(shape=(n_all_seq, seq_length, n_features+1))
-#     all_dates = np.empty(shape=(n_all_seq, seq_length), dtype='datetime64[s]')
-#     X_all = np.empty(shape=(n_all_seq, seq_length, n_features+1))
-#     X_phys = np.empty(shape=(n_all_seq, seq_length, n_features+1)) #non-normalized features + ice cover flag
-
-#     X_trn[:] = np.nan
-#     X_tst[:] = np.nan
-#     X_all[:] = np.nan
-#     X_phys[:] = np.nan
-
-#     #seq index for data to be returned
-#     tr_seq_ind = 0 
-#     ts_seq_ind = 0
-#     all_seq_ind = 0
-#     #build datasets
-#     del_all_seq = 0
-#     if debug:
-#         print("x_trn shape prior to populating ", X_trn.shape)
-#     # print("obs index: ", np.where(np.isfinite(trn)))
-#     for s in range(0,train_seq_per_depth):
-#         start_index = s*seq_length
-#         end_index = (s+1)*seq_length
-#         if end_index > n_dates:
-#             n_train_seq -= win_per_seq*n_depths
-#             n_all_seq -= n_depths
-#             del_all_seq += 1
-#             X_all = np.delete(X_all, np.arange(X_all.shape[0],X_all.shape[0]-n_depths,-1), axis=0)
-#             X_trn = np.delete(X_trn, np.arange(X_trn.shape[0],X_trn.shape[0]-win_per_seq*n_depths,-1), axis=0)
-#             trn_dates = np.delete(trn_dates, np.arange(trn_dates.shape[0], trn_dates.shape[0] - n_depths*win_per_seq,-1), axis=0)
-#             continue
-#         for d in range(0, n_depths):
-#             #first do total model data
-#             X_all[all_seq_ind, :, :-1] = feat_mat[d,start_index:end_index,:] #feat
-#             all_dates[all_seq_ind, :] = dates[start_index:end_index] #dates
-#             X_all[all_seq_ind,:,-1] = np.nan #no label
-#             X_phys[all_seq_ind, :, :] = feat_mat_raw[d, start_index:end_index,:]
-#             all_seq_ind += 1   
-#         #now do sliding windows for training data 
-#         for w in range(0, win_per_seq):
-#             win_start_ind = start_index + w*win_shift
-#             win_end_ind = win_start_ind + seq_length
-
-#             for d in range(0,n_depths):
-#                 if win_end_ind > n_dates:
-#                     n_train_seq -= 1
-#                     X_trn = np.delete(X_trn, -1, axis=0)
-#                     trn_dates = np.delete(trn_dates, -1, axis=0)
-#                     continue
-#                 X_trn[tr_seq_ind, :, :-1] = feat_mat[d,win_start_ind:win_end_ind,:]
-#                 X_trn[tr_seq_ind,:,-1] = trn[d,win_start_ind:win_end_ind]
-#                 trn_dates[tr_seq_ind,:] = dates[win_start_ind:win_end_ind]
-#                 tr_seq_ind += 1
-#     #final seq starts at end and goes inward [seq_length]
-#     # print("n dates: ", n_dates, ", seq len: ", seq_length)
-#     if n_dates % seq_length > 0:
-#         end_ind = n_dates
-#         start_ind = end_ind - seq_length
-#         for d in range(0,n_depths):
-#             X_trn[tr_seq_ind, :, :-1] = feat_mat[d,start_ind:end_ind,:]
-#             X_trn[tr_seq_ind,:,-1] = trn[d,start_ind:end_ind]
-#             trn_dates[tr_seq_ind,:] = dates[start_ind:end_ind]
-#             tr_seq_ind += 1
-
-#     if debug:
-#         print("x_trn shape after populating ", X_trn.shape)
-#     #assert data was constructed correctly
-#     if tr_seq_ind != n_train_seq:
-#         # print("incorrect number of trn seq estimated {} vs actual{}".format(n_train_seq, tr_seq_ind))
-#         extra = n_train_seq - tr_seq_ind
-#         n_train_seq -= extra
-#         X_trn = np.delete(X_trn, np.arange(X_trn.shape[0],X_trn.shape[0]-extra,-1), axis=0)
-#         trn_dates = np.delete(trn_dates, np.arange(X_trn.shape[0],X_trn.shape[0]-extra,-1), axis=0)
-#     assert tr_seq_ind == n_train_seq, \
-#      "incorrect number of trn seq estimated {} vs actual{}".format(n_train_seq, tr_seq_ind)
-
-#     while trn_dates[-1,0] == np.datetime64("NaT"):
-#         trn_dates = np.delete(trn_dates, -1, axis=0)
-#         X_trn = np.delete(X_trn, -1, axis=0)
-
-#     if n_test_seq != 0:
-#         #now test data(maybe bug in this specification of end of range?)
-#         for s in range(test_seq_per_depth):
-#                 start_index = s*seq_length
-#                 end_index = (s+1)*seq_length
-#                 if end_index > n_dates:
-#                     n_test_seq -= tst_win_per_seq*n_depths
-#                     X_tst = np.delete(X_tst, np.arange(X_tst.shape[0], X_tst.shape[0] - tst_win_per_seq*n_depths,-1), axis=0)
-#                     tst_dates = np.delete(tst_dates, np.arange(tst_dates.shape[0], tst_dates.shape[0] - tst_win_per_seq*n_depths,-1), axis=0)
-#                     continue
-#                 for w in range(0, tst_win_per_seq):
-#                     win_start_ind = start_index+w*win_shift_tst
-#                     win_end_ind = win_start_ind + seq_length
-#                     if win_end_ind > n_dates:
-#                         n_test_seq -= n_depths
-#                         X_tst = np.delete(X_tst, np.arange(X_tst.shape[0], X_tst.shape[0] - n_depths,-1), axis=0)
-#                         tst_dates = np.delete(tst_dates, np.arange(tst_dates.shape[0], tst_dates.shape[0] - n_depths,-1), axis=0)
-#                         continue
-#                     for d in range(0, n_depths):
-#                         X_tst[ts_seq_ind, :, :-1] = feat_mat[d,win_start_ind:win_end_ind,:]
-#                         X_tst[ts_seq_ind,:,-1] = tst[d,win_start_ind:win_end_ind]
-#                         tst_dates[ts_seq_ind,:] = dates[win_start_ind:win_end_ind]
-#                         ts_seq_ind += 1
-#                            #final seq starts at end and goes inward [seq_length]
-#         if debug:
-#             print("last_test_date_ind: ", last_test_date_ind, ", sl ", seq_length)
-
-#         if last_test_date_ind % seq_length > 0 and last_test_date_ind - seq_length > 0:
-#             end_ind = last_test_date_ind
-#             if not end_ind - seq_length < 0:
-#                 start_ind = end_ind - seq_length
-#                 for d in range(0,n_depths):
-#                     X_tst[ts_seq_ind, :, :-1] = feat_mat[d,start_ind:end_ind,:]
-#                     X_tst[ts_seq_ind,:,-1] = trn[d,start_ind:end_ind]
-#                     tst_dates[ts_seq_ind,:] = dates[start_ind:end_ind]
-#                     ts_seq_ind += 1
-#     while np.isnat(tst_dates[-1,0]):
-#         if debug:
-#             print("NaT?")
-#             pdb.set_trace()
-#         tst_dates = np.delete(tst_dates, -1, axis=0)
-#         X_tst = np.delete(X_tst, -1, axis=0)
-
-
-
-
-#     #assert data was constructed correctly
-#     assert ts_seq_ind == n_test_seq, \
-#         "incorrect number of tst seq estimated {} vs actual{}".format(n_test_seq, ts_seq_ind)      
-#     #remove sequences with no labels
-#     tr_seq_removed = 0
-#     trn_del_ind = np.array([], dtype=np.int32)
-#     ts_seq_removed = 0
-#     tst_del_ind = np.array([], dtype=np.int32)
-
-#     #if allTestSeq, combine trn and test unfiltered
-#     if allTestSeq:
-#         X_tst = np.vstack((X_tst, X_trn))
-#         tst_dates = np.vstack((tst_dates, trn_dates))
-#         while np.isnat(tst_dates[-1,0]):
-#             tst_dates = np.delete(tst_dates, -1, axis=0)
-#             X_tst = np.delete(X_tst, -1, axis=0)
-#     # full_data = 
-#     for i in range(X_trn.shape[0]):
-#         # print("seq ",i," nz-val-count:",np.count_nonzero(~np.isnan(X_trn[i,:,-1])))
-#         if not np.isfinite(X_trn[i,:,:-1]).all():
-#             # print("MISSING FEAT REMOVE")
-#             tr_seq_removed += 1
-#             trn_del_ind = np.append(trn_del_ind, i)
-#         if np.isfinite(X_trn[i,begin_loss_ind:,-1]).any():
-#             # print("HAS OBSERVE, CONTINUE")
-#             continue
-#         else:
-#             # print(X_trn[i,:,-1])
-#             # print("NO OBSERVE, REMOVE")
-#             tr_seq_removed += 1
-#             trn_del_ind = np.append(trn_del_ind, i)
-#     if not allTestSeq: #if we don't want to output ALL the data as test
-#         for i in range(X_tst.shape[0]):
-#             if not np.isfinite(X_tst[i,:,:-1]).all():
-#                 ts_seq_removed += 1
-#                 tst_del_ind = np.append(tst_del_ind, i)
-#             if np.isfinite(X_tst[i,begin_loss_ind:,-1]).any():
-#                 continue
-#             else:
-#                 tst_del_ind = np.append(tst_del_ind, i)
-#                 ts_seq_removed += 1
-#             if i > 0:
-#                 if tst_dates[i-1,0] > tst_dates[i,0]:
-#                     if debug:
-#                         print("date thing?")
-#                     tst_del_ind = np.append(tst_del_ind, i)
-#     else:
-#         for i in range(X_tst.shape[0]):
-#             if not np.isfinite(X_tst[i,:,:-1]).all():
-#                 ts_seq_removed += 1
-#                 tst_del_ind = np.append(tst_del_ind, i)
-#     #remove denoted values from trn and tst
-#     X_trn_tmp = np.delete(X_trn, trn_del_ind, axis=0)
-#     trn_dates_tmp = np.delete(trn_dates, trn_del_ind, axis=0)
-#     X_tst_tmp = np.delete(X_tst, tst_del_ind, axis=0)
-#     tst_dates_tmp = np.delete(tst_dates, tst_del_ind, axis=0)
-#     X_trn = X_trn_tmp
-#     trn_dates = trn_dates_tmp
-#     X_tst = X_tst_tmp
-#     tst_dates = tst_dates_tmp
-#     #gather unique test dates
-#     tst_date_lower_bound = np.where(dates == tst_dates[0][0])[0][0]
-#     tst_date_upper_bound = np.where(dates == tst_dates[-1][-1])[0][0]
-
-#     unique_tst_dates = dates[tst_date_lower_bound:tst_date_upper_bound]
-
-#     hyps_dir = data_dir + "geometry" #hypsography file
-#     hyps = []
-#     my_path = os.path.abspath(os.path.dirname(__file__))
-#     if os.path.exists(os.path.join(my_path, hyps_dir)):
-#         hyps = getHypsographyManyLakes(hyps_dir, lakename, depth_values)
-
-
-#     #add metadata if called for
-#     if includeMetadata:
-#         metadata = getMetadata(lakename)
-#     assert np.isfinite(X_all[:,:,:-1]).all(), "X_all has nan"
-#     assert np.isfinite(X_trn[:,:,:-1]).all(), "X_trn has nan"
-#     assert np.isfinite(X_phys).all(), "X_phys has nan"
-#     # assert np.isfinite(all_dates).any(), "all_dates has nan"
-#     return (torch.from_numpy(X_trn), trn_dates, torch.from_numpy(X_tst), tst_dates, unique_tst_dates,torch.from_numpy(X_all), 
-#             torch.from_numpy(X_phys), all_dates, hyps)
-
-def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, seq_length, n_features, \
-                                            win_shift= 1, begin_loss_ind = 100, \
-                                            test_seq_per_depth=1, \
                                             outputFullTestMatrix=False, sparseCustom=None, \
                                             allTestSeq=False, \
-                                            postProcessSplits=True, randomSeed=0):
+                                            oldFeat = False, normGE10=False, postProcessSplits=True, randomSeed=0):
+
+    #NONAN
     #PARAMETERS
         #@lakename = string of lake name as the folder of /data/processed/{lakename}
         #@seq_length = sequence length of LSTM inputs
@@ -1394,16 +32,31 @@ def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, s
     debug = False
     my_path = os.path.abspath(os.path.dirname(__file__))
 
-    feat_mat_raw = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/features.npy"))
-    feat_mat = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_features.npy"))
+    feat_mat_raw = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/features.npy"))
+    feat_mat = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/processed_features.npy"))
+
+    tst = []
+    trn = []
 
     #GET TRAIN/TEST HERE
     #alternative way to divide test/train just by 1/3rd 2/3rd
-    tst = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/test_b.npy"))
-    trn = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/train_b.npy"))
-    full = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/full.npy"))
- 
-    dates = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/dates.npy"))
+    tst = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/test.npy"))
+    trn = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/train.npy"))
+    if os.path.exists(os.path.join(my_path, "../../data/processed/"+lakename+"/full.npy")):
+        full = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/full.npy"))
+    else:
+        full = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/full_obs.npy"))
+
+
+
+    # if debug:
+    #     print("initial trn: ", trn)
+    #     print("observations: ",np.count_nonzero(~np.isnan(trn)))
+    dates = []
+    if os.path.exists(os.path.join(my_path, "../../data/processed/"+lakename+"/dates.npy")):
+        dates = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/dates.npy"))
+    else:
+        dates = []
 
     #post process train/test splits
 
@@ -1428,6 +81,7 @@ def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, s
         n_profiles = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0].shape[0] #n nonzero columns
         n_profiles_to_zero = n_profiles - sparseCustom #n nonzero columns
         if n_profiles_to_zero < 0:
+            pdb.set_trace()
             print("not enough training obs")
             return((sparseCustom,None,None,None,None,None,None,None,None))
         profiles_ind = np.nonzero(np.count_nonzero(~np.isnan(trn), axis=0))[0] #nonzero columns
@@ -1506,6 +160,7 @@ def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, s
     del_all_seq = 0
     if debug:
         print("x_trn shape prior to populating ", X_trn.shape)
+    # print("obs index: ", np.where(np.isfinite(trn)))
     for s in range(0,train_seq_per_depth):
         start_index = s*seq_length
         end_index = (s+1)*seq_length
@@ -1528,24 +183,19 @@ def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, s
         for w in range(0, win_per_seq):
             win_start_ind = start_index + w*win_shift
             win_end_ind = win_start_ind + seq_length
-            if win_end_ind > n_dates:
-                n_train_seq -= 1
-                X_trn = np.delete(X_trn, -1, axis=0)
-                trn_dates = np.delete(trn_dates, -1, axis=0)
 
-                continue
             for d in range(0,n_depths):
-                # if win_end_ind > n_dates:
-                #     n_train_seq -= 1
-                #     X_trn = np.delete(X_trn, -1, axis=0)
-                #     trn_dates = np.delete(trn_dates, -1, axis=0)
-
-                #     continue
+                if win_end_ind > n_dates:
+                    n_train_seq -= 1
+                    X_trn = np.delete(X_trn, -1, axis=0)
+                    trn_dates = np.delete(trn_dates, -1, axis=0)
+                    continue
                 X_trn[tr_seq_ind, :, :-1] = feat_mat[d,win_start_ind:win_end_ind,:]
                 X_trn[tr_seq_ind,:,-1] = trn[d,win_start_ind:win_end_ind]
                 trn_dates[tr_seq_ind,:] = dates[win_start_ind:win_end_ind]
                 tr_seq_ind += 1
     #final seq starts at end and goes inward [seq_length]
+    # print("n dates: ", n_dates, ", seq len: ", seq_length)
     if n_dates % seq_length > 0:
         end_ind = n_dates
         start_ind = end_ind - seq_length
@@ -1559,6 +209,7 @@ def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, s
         print("x_trn shape after populating ", X_trn.shape)
     #assert data was constructed correctly
     if tr_seq_ind != n_train_seq:
+        # print("incorrect number of trn seq estimated {} vs actual{}".format(n_train_seq, tr_seq_ind))
         extra = n_train_seq - tr_seq_ind
         n_train_seq -= extra
         X_trn = np.delete(X_trn, np.arange(X_trn.shape[0],X_trn.shape[0]-extra,-1), axis=0)
@@ -1567,11 +218,8 @@ def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, s
      "incorrect number of trn seq estimated {} vs actual{}".format(n_train_seq, tr_seq_ind)
 
     while trn_dates[-1,0] == np.datetime64("NaT"):
-        if debug:
-            print("invalid time?")
         trn_dates = np.delete(trn_dates, -1, axis=0)
         X_trn = np.delete(X_trn, -1, axis=0)
-        n_train_seq -= 1
 
     if n_test_seq != 0:
         #now test data(maybe bug in this specification of end of range?)
@@ -1592,11 +240,6 @@ def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, s
                         tst_dates = np.delete(tst_dates, np.arange(tst_dates.shape[0], tst_dates.shape[0] - n_depths,-1), axis=0)
                         continue
                     for d in range(0, n_depths):
-                        # if win_end_ind > n_dates:
-                        #     n_test_seq -= n_depths
-                        #     X_tst = np.delete(X_tst, np.arange(X_tst.shape[0], X_tst.shape[0] - n_depths,-1), axis=0)
-                        #     tst_dates = np.delete(tst_dates, np.arange(tst_dates.shape[0], tst_dates.shape[0] - n_depths,-1), axis=0)
-                        #     continue
                         X_tst[ts_seq_ind, :, :-1] = feat_mat[d,win_start_ind:win_end_ind,:]
                         X_tst[ts_seq_ind,:,-1] = tst[d,win_start_ind:win_end_ind]
                         tst_dates[ts_seq_ind,:] = dates[win_start_ind:win_end_ind]
@@ -1615,6 +258,8 @@ def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, s
                     tst_dates[ts_seq_ind,:] = dates[start_ind:end_ind]
                     ts_seq_ind += 1
     while np.isnat(tst_dates[-1,0]):
+        if debug:
+            print("NaT?")
         tst_dates = np.delete(tst_dates, -1, axis=0)
         X_tst = np.delete(X_tst, -1, axis=0)
 
@@ -1639,19 +284,22 @@ def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, s
             X_tst = np.delete(X_tst, -1, axis=0)
     # full_data = 
     for i in range(X_trn.shape[0]):
+        # print("seq ",i," nz-val-count:",np.count_nonzero(~np.isnan(X_trn[i,:,-1])))
         if not np.isfinite(X_trn[i,:,:-1]).all():
+            # print("MISSING FEAT REMOVE")
             tr_seq_removed += 1
             trn_del_ind = np.append(trn_del_ind, i)
         if np.isfinite(X_trn[i,begin_loss_ind:,-1]).any():
+            # print("HAS OBSERVE, CONTINUE")
             continue
         else:
+            # print(X_trn[i,:,-1])
+            # print("NO OBSERVE, REMOVE")
             tr_seq_removed += 1
             trn_del_ind = np.append(trn_del_ind, i)
     if not allTestSeq: #if we don't want to output ALL the data as test
         for i in range(X_tst.shape[0]):
             if not np.isfinite(X_tst[i,:,:-1]).all():
-                if debug:
-                    print("nan features?")
                 ts_seq_removed += 1
                 tst_del_ind = np.append(tst_del_ind, i)
             if np.isfinite(X_tst[i,begin_loss_ind:,-1]).any():
@@ -1665,15 +313,10 @@ def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, s
                         print("date thing?")
                     tst_del_ind = np.append(tst_del_ind, i)
     else:
-        if debug:
-            print("X_tst shape prior to removing nan feats: ",X_tst.shape)
         for i in range(X_tst.shape[0]):
             if not np.isfinite(X_tst[i,:,:-1]).all():
-                if debug:
-                    print("nan features?")
                 ts_seq_removed += 1
                 tst_del_ind = np.append(tst_del_ind, i)
-
     #remove denoted values from trn and tst
     X_trn_tmp = np.delete(X_trn, trn_del_ind, axis=0)
     trn_dates_tmp = np.delete(trn_dates, trn_del_ind, axis=0)
@@ -1683,28 +326,30 @@ def buildLakeDataForRNN_manylakes_finetune2_goodrmse_nonan(lakename, data_dir, s
     trn_dates = trn_dates_tmp
     X_tst = X_tst_tmp
     tst_dates = tst_dates_tmp
-
-    # if allTestSeq:
     #gather unique test dates
     tst_date_lower_bound = np.where(dates == tst_dates[0][0])[0][0]
     tst_date_upper_bound = np.where(dates == tst_dates[-1][-1])[0][0]
 
-    unique_tst_dates = dates[tst_date_lower_bound:tst_date_upper_bound+1]
+    unique_tst_dates = dates[tst_date_lower_bound:tst_date_upper_bound]
 
     hyps_dir = data_dir + "geometry" #hypsography file
     hyps = []
     my_path = os.path.abspath(os.path.dirname(__file__))
+
     if os.path.exists(os.path.join(my_path, hyps_dir)):
+
         hyps = getHypsographyManyLakes(hyps_dir, lakename, depth_values)
 
 
-    #add metadata if called for
     assert np.isfinite(X_all[:,:,:-1]).all(), "X_all has nan"
     assert np.isfinite(X_trn[:,:,:-1]).all(), "X_trn has nan"
     assert np.isfinite(X_phys).all(), "X_phys has nan"
     # assert np.isfinite(all_dates).any(), "all_dates has nan"
     return (torch.from_numpy(X_trn), trn_dates, torch.from_numpy(X_tst), tst_dates, unique_tst_dates,torch.from_numpy(X_all), 
             torch.from_numpy(X_phys), all_dates, hyps)
+
+
+
 def buildLakeDataForRNN_depthaware(lakename, data_dir, seq_length, n_features, \
                                             win_shift= 1, begin_loss_ind = 100, \
                                             test_seq_per_depth=1, latter_third_test=True, \
@@ -1721,30 +366,30 @@ def buildLakeDataForRNN_depthaware(lakename, data_dir, seq_length, n_features, \
     debug = False
     my_path = os.path.abspath(os.path.dirname(__file__))
 
-    feat_mat_raw = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/features.npy"))
+    feat_mat_raw = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/features.npy"))
     feat_mat = []
     if oldFeat:
-        feat_mat = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_features.npy"))
+        feat_mat = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/processed_features.npy"))
     else:
-        if os.path.exists(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_features_normAll.npy")):
-            feat_mat = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_features_normAll.npy"))
+        if os.path.exists(os.path.join(my_path, "../../data/processed/"+lakename+"/processed_features_normAll.npy")):
+            feat_mat = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/processed_features_normAll.npy"))
     if normGE10:
-        feat_mat = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/processed_featuresGr10.npy"))
+        feat_mat = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/processed_featuresGr10.npy"))
     tst = []
     trn = []
 
     #GET TRAIN/TEST HERE
     #alternative way to divide test/train just by 1/3rd 2/3rd
-    tst = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/test_b.npy"))
-    trn = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/train_b.npy"))
+    tst = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/test_b.npy"))
+    trn = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/train_b.npy"))
 
 
     if debug:
         print("initial trn: ", trn)
         print("observations: ",np.count_nonzero(~np.isnan(trn)))
     dates = []
-    if os.path.exists(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/dates.npy")):
-        dates = np.load(os.path.join(my_path, "../../data/processed/lake_data/"+lakename+"/dates.npy"))
+    if os.path.exists(os.path.join(my_path, "../../data/processed/"+lakename+"/dates.npy")):
+        dates = np.load(os.path.join(my_path, "../../data/processed/"+lakename+"/dates.npy"))
     else:
         dates = []
 
@@ -2468,61 +1113,6 @@ def clip_grad_norm_(parameters, max_norm, norm_type=2):
             p.grad.data.mul_(clip_coef)
     return total_norm
 
-def plot_ec_loss(lakename,all_data, all_phys_data, all_dates,hypsography, n_depths, depth_areas, combine_days=1):
-    depth_areas = torch.from_numpy(depth_areas[0]).double()
-    use_gpu = False
-    import numpy as np
-    errors = np.zeros(shape=(366))
-    n_days = np.zeros(shape=(366))
-    # print(all_data.size())
-    # print(all_dates.shape)
-    assert all_data.size()[0] == all_phys_data.size()[0]
-    assert all_phys_data.size()[0] == all_dates.shape[0]
-    n_sets = math.floor(all_data.size()[0] / n_depths)
-    x = all_data[:,:,:-1]
-    y = all_data[:,:,-1]
-    densities = transformTempToDensity(y, use_gpu)
-    print(n_sets, " sets of depths")
-    for s in range(n_sets):
-        print("set ", s)
-        #indices
-        start_index = (s)*n_depths
-        end_index = (s+1)*n_depths
-        # diff_vec = torch.empty((x.size()[1]))
-        data_list = [pd.to_datetime(pd.Series(x), format="%Y%m%d") for x in all_dates[start_index,:]]
-        # print(data_list)
-        doy = pd.DataFrame([x.apply(lambda x: x.timetuple().tm_yday) for x in data_list]).values
-        # doy = [datetime.datetime.combine(date.fromordinal(x), datetime.time.min).timetuple().tm_yday  for x in all_dates[start_index,:]]
-        # print(doy)
-        lake_energies = calculate_lake_energy(y[start_index:end_index,:], densities[start_index:end_index,:], depth_areas)
-        #calculate energy change in each timestep
-        lake_energy_deltas = calculate_lake_energy_deltas(lake_energies, combine_days, depth_areas[0])
-        lake_energy_deltas = lake_energy_deltas[1:]
-        #calculate sum of energy flux into or out of the lake at each timestep
-        lake_energy_fluxes = calculate_energy_fluxes(all_phys_data[start_index,:,:], y[start_index,:], combine_days)
-        ### can use this to plot energy delta and flux over time to see if they line up
-
-        diff_vec = (lake_energy_deltas - lake_energy_fluxes).abs_()
-        for t in range(diff_vec.size()[0]):
-            # print("doy[t], ", doy[t])
-            # print("t, ", t)
-            errors[doy[t]-1] += diff_vec[t]
-            n_days[doy[t]-1] += 1
-        # print("errors: ", errors)
-        # print("n days: ", n_days)
-
-    avg_err = errors / n_days    
-    import matplotlib
-    import matplotlib.pyplot as plt
-    t = np.arange(366)
-    fig, ax = plt.subplots()
-    ax.plot(t, avg_err, label="error")
-    # ax.plot(t, lake_energy_fluxes.numpy(), label="surface fluxes")
-    # ax.plot(t, lake_energy_fluxes.numpy() - lake_energy_deltas.numpy(), label="DIFF")
-
-    ax.set(xlabel="doy", ylabel='W/m^2 diff',title='Average Absolute Difference between sum of fluxes and lake energy change for GLM on '+lakename)
-    plt.legend()
-    plt.show()
 
 
 def get_energy_diag(inputs, outputs, phys, labels, dates, depth_areas, n_depths, use_gpu, combine_days=1):
@@ -2531,12 +1121,8 @@ def get_energy_diag(inputs, outputs, phys, labels, dates, depth_areas, n_depths,
     diff_vec = torch.empty((inputs.size()[1]))
     n_dates = inputs.size()[1]
 
-    # outputs = labels
-
     outputs = outputs.view(outputs.size()[0], outputs.size()[1])
-    # print("modeled temps: ", outputs)
     densities = transformTempToDensity(outputs, use_gpu)
-    # print("modeled densities: ", densities)
 
 
     #for experiment
@@ -2548,20 +1134,7 @@ def get_energy_diag(inputs, outputs, phys, labels, dates, depth_areas, n_depths,
     #calculate energy change in each timestep
     lake_energy_deltas = calculate_lake_energy_deltas(lake_energies, combine_days, depth_areas[0])
     lake_energy_deltas = lake_energy_deltas[1:]
-    #calculate sum of energy flux into or out of the lake at each timestep
-    # print("dates ", dates[0,1:6])
     lake_energy_fluxes = calculate_energy_fluxes(phys[0,:,:], outputs[0,:], combine_days)
-    ### can use this to plot energy delta and flux over time to see if they line up
-
-    
-    # mendota og ice guesstimate
-    # diff_vec = diff_vec[np.where((doy[:] > 134) & (doy[:] < 342))[0]]
-
-    # #actual ice 
-    # diff_vec = diff_vec[np.where((phys[:,9] == 0))[0]]
-
-    # # #compute difference to be used as penalty
-    # diff_per_set[i] = diff_vec.mean()
     return (lake_energy_deltas.numpy(), lake_energy_fluxes.numpy())
 
 def calculate_energy(pred, hyps, use_gpu):
@@ -2849,7 +1422,6 @@ def calculate_energy_fluxes_manylakes(phys, surf_temps, combine_days):
     return fluxes
 
 def getHypsographyManyLakes(path, lakename, depths):
-
     my_path = os.path.abspath(os.path.dirname(__file__))
     if not os.path.exists(os.path.join(my_path, path)):
         print("no hypsography file")
@@ -3050,99 +1622,7 @@ def parseMatricesFromSeqs(pred, targ, depths, dates, n_depths, n_tst_dates, u_de
         # print(np.count_nonzero(np.isfinite(lab_mat))," labels set")
                 
     return (out_mat, lab_mat)
-def parseMatricesFromSeqs_old(pred, targ, depths, dates, n_depths, n_tst_dates, u_depths, u_dates):
-    #format an array of sequences into one [depths x timestep] matrix
-    assert pred.shape[0] == targ.shape[0]
-    n_seq = pred.shape[0]
-    seq_len = int(pred.shape[1])
-    out_mat = np.empty((n_depths, n_tst_dates))
-    out_mat[:] = np.nan
-    lab_mat = np.empty((n_depths, n_tst_dates))
-    lab_mat[:] = np.nan
-    for i in range(n_seq):
-        #for each sequence
-        if i >= dates.shape[0]:
-            continue
-        #find depth index
-        if np.isnan(depths[i,0]):
-            continue
-        depth_ind = np.where(abs(u_depths - depths[i,0].item()) <= .0001)[0][0]
-        
-        #find date index
-        if np.isnat(dates[i,0]):
-            continue
-        if len(np.where(u_dates == dates[i,0])[0]) == 0:
-            print("why is this here")
-        date_ind = np.where(u_dates == dates[i,0])[0][0]
 
-        if out_mat[depth_ind, date_ind:].shape[0] < seq_len:
-            sizeToCopy = out_mat[depth_ind, date_ind:].shape[0] #this is to not copy data beyond test dates
-            out_mat[depth_ind, date_ind:] = pred[i,:sizeToCopy]
-            lab_mat[depth_ind, date_ind:] = targ[i,:sizeToCopy]
-        else:
-            out_mat[depth_ind, date_ind:date_ind+seq_len] = pred[i,:]
-            lab_mat[depth_ind, date_ind:date_ind+seq_len] = targ[i,:]
-            # for t in range(seq_len):
-            #     if np.isnan(out_mat[depth_ind,date_ind+t]):
-            #         out_mat[depth_ind, date_ind+t] = pred[i,t]
-            #         lab_mat[depth_ind, date_ind+t] = targ[i,t]
-                
-    return (out_mat, lab_mat)
-def parseMatricesFromSeqs2(pred, targ, depths, dates, n_depths, n_tst_dates, u_depths, u_dates):
-    #format an array of sequences into one [depths x timestep] matrix
-    assert pred.shape[0] == targ.shape[0]
-    n_seq = pred.shape[0]
-    seq_len = int(pred.shape[1])
-    out_mat = np.empty((n_depths, n_tst_dates))
-    out_mat[:] = np.nan
-    lab_mat = np.empty((n_depths, n_tst_dates))
-    lab_mat[:] = np.nan
-    for i in range(n_seq):
-        #for each sequence
-        if i >= dates.shape[0]:
-            continue
-        #find depth index
-        if np.isnan(depths[i,0]):
-            continue
-        depth_ind = np.where(abs(u_depths - depths[i,0].item()) <= .0001)[0][0]
-        
-        #find date index
-        if np.isnat(dates[i,0]):
-            continue
-        if len(np.where(u_dates == dates[i,0])[0]) == 0:
-            print("why is this here")
-        date_ind = np.where(u_dates == dates[i,0])[0][0]
-
-        if out_mat[depth_ind, date_ind:].shape[0] < seq_len:
-            sizeToCopy = out_mat[depth_ind, date_ind:].shape[0] #this is to not copy data beyond test dates
-            out_mat[depth_ind, date_ind:][np.isfinite(pred[i,:sizeToCopy])]  = pred[i,:sizeToCopy][np.isfinite(pred[i,:sizeToCopy])]
-            lab_mat[depth_ind, date_ind:][np.isfinite(targ[i,:sizeToCopy])]  = targ[i,:sizeToCopy][np.isfinite(targ[i,:sizeToCopy])]
-            # out_mat[depth_ind, date_ind:] = pred[i,:sizeToCopy]
-            # lab_mat[depth_ind, date_ind:] = targ[i,:sizeToCopy]
-        else:
-            # out_mat[depth_ind, date_ind:date_ind+seq_len] = pred[i,:]
-            # lab_mat[depth_ind, date_ind:date_ind+seq_len] = targ[i,:]
-            out_mat[depth_ind, date_ind:date_ind+seq_len][np.isfinite(pred[i,:])] = pred[i,:][np.isfinite(pred[i,:])]
-            lab_mat[depth_ind, date_ind:date_ind+seq_len][np.isfinite(targ[i,:])] = targ[i,:][np.isfinite(targ[i,:])]
-
-            for t in range(seq_len):
-                if np.isnan(out_mat[depth_ind,date_ind+t]):
-                    out_mat[depth_ind, date_ind+t] = pred[i,t]
-                    lab_mat[depth_ind, date_ind+t] = targ[i,t]
-                
-    return (out_mat, lab_mat)
-def preprocessForTargetLake(target_id, addDirRemove=0):
-    addStr = ''
-    if addDirRemove is 1:
-        addStr = '../'
-    path1 = addStr+'../../data/processed/WRR_69Lake/1097324/features_'+str(target_id)+'.npy'
-    path2 = addStr+'../../data/processed/WRR_69Lake/13293262/features_'+str(target_id)+'.npy'
-    if not os.path.exists(path1) and not os.path.exists(path2):
-        print("commencing preprocess")
-        preprocess(target_id, addDirRemove=addDirRemove)
-        print("preprocess completed")
-    else:
-        print(target_id,"already preprocessed")
 
 def transformTempToDensity(temp, use_gpu):
     # print(temp)

@@ -13,141 +13,114 @@ import datetime
 # June 2020 - preprocess for MTL publication (Jared)
 # Sept 2020 - cleaned up for repo construction (Jared)
 ###################################################################################
-first_time = True
+
+#inital data load, site ids
+base_path = "../../data/raw/sb_mtl_data_release/"
+obs_df = pd.read_csv(base_path+"obs/temperature_observations.csv")
+metadata = pd.read_feather("../../metadata/lake_metadata.feather")
+ids = np.unique(obs_df['site_id'].values)
+ids = np.array([re.search('nhdhr_(.*)', x).group(1) for x in ids])
+
 n_features = 7
-# metadata = pd.read_feather("../../metadata/lake_metadata_2700plus.feather")
-metadata = pd.read_feather("../../metadata/lake_metadata_baseJune2020.feather")
-ids = metadata['site_id'].values
 
-
-# ids = metadata['site_id'].values
-
-# obs_df = pd.read_feather("../../data/raw/additional_lakes/temperature_obs.feather")
-# ids = np.unique(obs_df['nhdhr_id'].values)
-# matches = [re.search('nhdhr_(.*)', i) for i in ids]
-# ids = [m.group(1) for m in matches]
-enable_glm = True
-ct = 0
-# to_del = ['120018008', '120020307', '120020636', '32671150', '58125241', '120020800', '91598525']
-# ids = np.setdiff1d(ids, to_del)
 n_lakes = ids.shape[0]
-#accumulation for averaging
-# means_per_lake = np.zeros((n_lakes,8), dtype=np.float_)
-# means_per_lake[:] = np.nan
-# var_per_lake = np.zeros((n_lakes,8),dtype=np.float_)
-# var_per_lake[:] = np.nan
+
+#accumulation data structs for averaging
+means_per_lake = np.zeros((n_lakes,8), dtype=np.float_)
+means_per_lake[:] = np.nan
+var_per_lake = np.zeros((n_lakes,8),dtype=np.float_)
+var_per_lake[:] = np.nan
+
+#calculate averages and std_dev for each input driver across all lakes
+for lake_ind, name in enumerate(ids):
+    nid = 'nhdhr_' + name
+
+    print("(",lake_ind,"/",str(len(ids)),") ","pre ", name)
+
+    #read/format meteorological data for numpy
+    meteo_dates = np.loadtxt(base_path+'meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', dtype=np.string_ , usecols=2)[1:]
+    print("first meteo date", meteo_dates[0])
 
 
-# for lake_ind, name in enumerate(ids):
-#     nid = 'nhdhr_' + name
-#     # if nid == 'nhdhr_120018008' or nid == 'nhdhr_120020307' or nid == 'nhdhr_120020636' or nid == 'nhdhr_32671150' or nid =='nhdhr_58125241':
-#     #     continue
-#     print("(",lake_ind,"/",str(len(ids)),") ","pre ", name)
-#     ############################################
-#     #read/format meteorological data for numpy
-#     #############################################
-#     # meteo_dates = np.loadtxt('../../data/raw/sb_pgdl_data_release/meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', dtype=np.string_ , usecols=2)[1:]
-#     # print("first meteo date", meteo_dates[0])
+    obs = pd.read_feather(base_path+'obs/nhdhr_'+name+'_obs.feather')
+    obs['date2'] = pd.to_datetime(obs.date)
+    obs.sort_values('date2', inplace=True)
+    print("first obs date: ",obs['date2'].values[0])
+
+    #lower/uppur cutoff indices (to match observations)
+
+    start_date = []
+    end_date = []
+    try:
+        start_date = "{:%Y-%m-%d}".format(obs.values[0,1])
+    except:
+        start_date = obs.values[0,1]
+    try:
+        end_date = "{:%Y-%m-%d}".format(obs.values[-1,1])
+    except:
+        end_date = obs.values[-1,1]
+
+    start_date = start_date.encode()
+    end_date = end_date.encode()
+    lower_cutoff = np.where(meteo_dates == start_date)[0][0] #457
+    if len(np.where(meteo_dates == end_date)[0]) < 1: 
+        print("observation beyond meteorological data! data will only be used up to the end of meteorological data")
+        upper_cutoff = meteo_dates.shape[0]
+    else:
+        upper_cutoff = np.where(meteo_dates == end_date)[0][0]+1 #14233
+
+    meteo_dates = meteo_dates[lower_cutoff:upper_cutoff]
 
 
-#     # obs = pd.read_feather('../../data/raw/sb_pgdl_data_release/obs/nhdhr_'+name+'_obs.feather')
-#     # obs['date2'] = pd.to_datetime(obs.date)
-#     # obs.sort_values('date2', inplace=True)
-#     # print("first obs date: ",obs['date2'].values[0])
+    #read from file and filter dates
+    meteo = np.genfromtxt(base_path+'meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', usecols=(3,4,5,6,7,8,9), skip_header=1)
+    meteo = meteo[lower_cutoff:upper_cutoff,:]
+    means_per_lake[lake_ind,1:] = [meteo[:,a].mean() for a in range(n_features)]
+    var_per_lake[lake_ind,1:] = [meteo[:,a].std() ** 2 for a in range(n_features)]
 
-#     # #lower/uppur cutoff indices (to match observations)
+    glm_temps = pd.read_csv(base_path+'predictions/pb0_nhdhr_'+name+'_temperatures.csv')
+    glm_temps = glm_temps.values[:]
+    n_total_dates = glm_temps.shape[0]
 
-#     # start_date = []
-#     # end_date = []
-#     # try:
-#     #     start_date = "{:%Y-%m-%d}".format(obs.values[0,1])
-#     # except:
-#     #     start_date = obs.values[0,1]
-#     # try:
-#     #     end_date = "{:%Y-%m-%d}".format(obs.values[-1,1])
-#     # except:
-#     #     end_date = obs.values[-1,1]
-#     # lower_cutoff = np.where(meteo_dates == start_date)[0][0] #457
-#     # if len(np.where(meteo_dates == end_date)[0]) < 1: 
-#     #     print("observation beyond meteorological data! data will only be used up to the end of meteorological data")
-#     #     upper_cutoff = meteo_dates.shape[0]
-#     # else:
-#     #     upper_cutoff = np.where(meteo_dates == end_date)[0][0]+1 #14233
+    #define depths from glm file
+    n_depths = glm_temps.shape[1]-1 #minus date 
+    max_depth = 0.5*(n_depths-1)
+    depths = np.arange(0, max_depth+0.5, 0.5)
+    depths_mean = depths.mean()
+    depths_var = depths.std() ** 2
+    means_per_lake[lake_ind, 0] = depths_mean
+    var_per_lake[lake_ind, 0] = depths_var
 
-#     # meteo_dates = meteo_dates[lower_cutoff:upper_cutoff]
-
-
-#     # #read from file and filter dates
-#     # meteo = np.genfromtxt('../../data/raw/sb_pgdl_data_release/meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', usecols=(3,4,5,6,7,8,9), skip_header=1)
-#     # meteo = meteo[lower_cutoff:upper_cutoff,:]
-#     # means_per_lake[lake_ind,1:] = [meteo[:,a].mean() for a in range(n_features)]
-#     # var_per_lake[lake_ind,1:] = [meteo[:,a].std() ** 2 for a in range(n_features)]
-
-#     glm_temps = pd.read_csv('../../data/raw/sb_pgdl_data_release/predictions/pb0_nhdhr_'+name+'_temperatures.csv')
-#     glm_temps = glm_temps.values[:]
-#     n_total_dates = glm_temps.shape[0]
-
-#     #define depths from glm file
-#     n_depths = glm_temps.shape[1]-1 #minus date and ice flag
-#     max_depth = 0.5*(n_depths-1)
-#     depths = np.arange(0, max_depth+0.5, 0.5)
-#     depths_mean = depths.mean()
-#     depths_var = depths.std() ** 2
-#     means_per_lake[lake_ind, 0] = depths_mean
-#     var_per_lake[lake_ind, 0] = depths_var
-
-# mean_feats = np.average(means_per_lake, axis=0)   
-# std_feats = np.average(var_per_lake ** (.5), axis=0)   
-# print("mean feats: ", repr(mean_feats))
-# print("std feats: ", repr(std_feats))
-# assert mean_feats.shape[0] == 8
-# assert std_feats.shape[0] == 8
-# assert not np.isnan(np.sum(mean_feats))
-# assert not np.isnan(np.sum(std_feats))
-
-# sys.exit()
-mean_feats =[5.35588822, 1.67022467e+02, 2.92219247e+02, 6.82630486e+00, 7.36783045e+01, 4.79831775e+00, 1.84282192e-03, 2.29087107e-03]
-std_feats = [3.23048181, 8.52233583e+01, 6.08592310e+01, 1.27621347e+01,1.29242034e+01, 1.69712815e+00, 5.58626647e-03, 1.27255570e-02]
-
-# mean_feats = [5.39943134, 1.66547735e2, 2.91895336e2, 6.76191477, 7.37264141e1, 4.79885221e0, 1.83438590e-3, 2.29069199e-3]
-# std_feats = [3.25563170, 8.53092316e1, 6.09606032e1, 1.27855354e1, 1.29500991e1, 1.69787946, 5.58071004e-3, 1.27507001e-2]
+mean_feats = np.average(means_per_lake, axis=0)   
+std_feats = np.average(var_per_lake ** (.5), axis=0)   
+print("mean feats: ", repr(mean_feats))
+print("std feats: ", repr(std_feats))
+assert mean_feats.shape[0] == 8
+assert std_feats.shape[0] == 8
+assert not np.isnan(np.sum(mean_feats))
+assert not np.isnan(np.sum(std_feats))
 
 
-ct = 0
-cont = False
+#can uncomment and hard code here 
+# mean feats:  array([5.43610635e+00, 1.66308346e+02, 2.91540662e+02, 6.68199233e+00,
+#        7.37268070e+01, 4.79260805e+00, 1.81936454e-03, 2.30189504e-03])
+# std feats:  array([3.27680686e+00, 8.52790273e+01, 6.10175316e+01, 1.28183124e+01,
+#        1.29724391e+01, 1.69513213e+00, 5.54588726e-03, 1.27910016e-02])
+#now preprocess every lakes data for modeling
 for it_ct,nid in enumerate(ids): #for each new additional lake
-    ct += 1
     name = str(nid)
-
-    # if not name == '159101759' and not cont:
-    #     continue
-    # else:
-    #     cont = True
-    nid = '143418975'
     nid = 'nhdhr_' + str(nid)
 
-    # if nid == 'nhdhr_120018008' or nid == 'nhdhr_120020307' or nid == 'nhdhr_120020636' or nid == 'nhdhr_32671150' or nid =='nhdhr_58125241':
-    #     continue
-    print(ct," starting ", name)
-    # if os.path.exists("../../data/processed/lake_data/"+name+"/features_pt.npy") and os.path.exists("../../data/processed/lake_data/"+name+"/dates_pt"):
-    #     print("ALREADY DONE")
-        # sys.exit()
-        
+    print(it_ct," starting ", name)
 
-
-    #for each unique lake
-
-    ############################################
     #read/format meteorological data for numpy
-    #############################################
-    # meteo_dates = np.loadtxt('../../data/raw/figure3/nhd_'+name+'_meteo.csv', delimiter=',', dtype=np.string_ , usecols=0)
-    meteo_dates = np.loadtxt('../../data/raw/sb_pgdl_data_release/meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', dtype=np.string_ , usecols=2, skiprows=1)
+    meteo_dates = np.loadtxt(base_path+'meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', dtype=np.string_ , usecols=2, skiprows=1)
     meteo_dates = np.array([x.decode() for x in meteo_dates])
-    meteo_dates_pt = np.loadtxt('../../data/raw/sb_pgdl_data_release/meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', dtype=np.string_ , usecols=2, skiprows=1)
+    meteo_dates_pt = np.loadtxt(base_path+'meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', dtype=np.string_ , usecols=2, skiprows=1)
     meteo_dates_pt = np.array([x.decode() for x in meteo_dates_pt])
-    glm_temps = pd.read_csv('../../data/raw/sb_pgdl_data_release/predictions/pb0_nhdhr_'+name+'_temperatures.csv').values[:]
+    glm_temps = pd.read_csv(base_path+'predictions/pb0_nhdhr_'+name+'_temperatures.csv').values[:]
     # glm_temps[:,-1] = np.array([x.decode() for x in glm_temps[:,-1]])
-    glm_temps_pt = pd.read_csv('../../data/raw/sb_pgdl_data_release/predictions/pb0_nhdhr_'+name+'_temperatures.csv').values[:]
+    glm_temps_pt = pd.read_csv(base_path+'predictions/pb0_nhdhr_'+name+'_temperatures.csv').values[:]
 
 
  
@@ -160,17 +133,15 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
         glm_temps_pt = np.append(glm_temps_pt, tmp, axis=1)
 
     n_depths = glm_temps.shape[1]-1 #minus date 
-    # print("n_depths: " + str(n_depths))
     max_depth = 0.5*(n_depths-1)
     depths = np.arange(0, max_depth+0.5, 0.5)
-    # depths_normalized = np.divide(depths - depths.mean(), depths.std())
     depths_normalized = np.divide(depths - mean_feats[0], std_feats[0])
 
-    ice_flags = pd.read_csv('../../data/raw/sb_pgdl_data_release/ice_flags/pb0_nhdhr_'+name+'_ice_flag.csv').values[:]
-    ice_flags_pt = pd.read_csv('../../data/raw/sb_pgdl_data_release/ice_flags/pb0_nhdhr_'+name+'_ice_flag.csv').values[:]
+    ice_flags = pd.read_csv(base_path+ 'ice_flags/pb0_nhdhr_'+name+'_ice_flags.csv').values[:]
+    ice_flags_pt = pd.read_csv(base_path + 'ice_flags/pb0_nhdhr_'+name+'_ice_flags.csv').values[:]
 
     #lower/uppur cutoff indices (to match observations)
-    obs = pd.read_feather('../../data/raw/sb_pgdl_data_release/obs/nhdhr_'+name+"_obs.feather")
+    obs = pd.read_feather(base_path+'obs/nhdhr_'+name+"_obs.feather")
     obs = obs[obs['depth'] <= max_depth] 
     obs.sort_values(by='date', axis=0, ascending=True, inplace=True, kind='quicksort', na_position='last', ignore_index=False)
     #sort observations
@@ -216,21 +187,14 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
 
 
     #read from file and filter dates
-    # meteo = np.genfromtxt('../../data/raw/figure3/nhd_'+name+'_meteo.csv', delimiter=',', usecols=(1,2,3,4,5,6,7))
-    meteo = np.genfromtxt('../../data/raw/sb_pgdl_data_release/meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', usecols=(3,4,5,6,7,8,9), skip_header=1)
-    meteo_pt = np.genfromtxt('../../data/raw/sb_pgdl_data_release/meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', usecols=(3,4,5,6,7,8,9), skip_header=1)
+    meteo = np.genfromtxt(base_path+'meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', usecols=(3,4,5,6,7,8,9), skip_header=1)
+    meteo_pt = np.genfromtxt(base_path+'meteo/nhdhr_'+name+'_meteo.csv', delimiter=',', usecols=(3,4,5,6,7,8,9), skip_header=1)
     meteo = meteo[lower_cutoff:upper_cutoff,:]
     meteo_pt = meteo_pt[lower_cutoff_pt:upper_cutoff_pt,:]
 
     #normalize data
-    # meteo_means = [meteo[:,a].mean() for a in range(n_features)]
-    # meteo_std = [meteo[:,a].std() for a in range(n_features)]
-    # meteo_norm = (meteo - meteo_means[:]) / meteo_std[:]
     meteo_norm = (meteo - mean_feats[1:]) / std_feats[1:]
     meteo_norm_pt = (meteo_pt - mean_feats[1:]) / std_feats[1:]
-
-    #meteo = final features sans depth
-    #meteo_norm = normalized final features sans depth
 
     ################################################################################
     # read/format GLM temperatures and observation data for numpy
@@ -238,10 +202,8 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
     n_total_dates = glm_temps.shape[0]
     n_total_dates_pt = glm_temps_pt.shape[0]
 
-    #define depths from glm file
 
     #cut glm temps to meteo dates for observation data PRETRAIN
-    # glm_temps_pt[:,-1] = np.array([pd.Timestamp(glm_temps_pt[a,-1]).strftime('%Y-%m-%d') for a in range(n_total_dates_pt)]) 
     if len(np.where(glm_temps_pt[:,-1] == start_date_pt[0])) < 1:
         print("pretrain glm outputs begin at " + start_date_pt + "which is before GLM data which begins at " + glm_temps_pt[0,0])
         lower_cutoff_pt = 0
@@ -266,7 +228,6 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
     ice_flags_pt = ice_flags_pt[lower_cutoff_pt:upper_cutoff_pt,:]
 
     #cut glm temps to meteo dates for observation data
-    # glm_temps[:,0] = np.array([pd.Timestamp(glm_temps[a,0]).strftime('%Y-%m-%d') for a in range(n_total_dates)]) 
     if len(np.where(glm_temps[:,-1] == start_date)[0]) < 1:
         print("observations begin at " + start_date + "which is before GLM data which begins at " + glm_temps[0,-1])
         lower_cutoff = 0
@@ -299,13 +260,13 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
         print(meteo.shape[0])
         sys.exit()
 
+    #data shape checks
     assert n_dates == meteo.shape[0]
     assert n_dates_pt == meteo_pt.shape[0]
     assert n_dates == meteo_norm.shape[0]
     assert n_dates_pt == meteo_norm_pt.shape[0]
     assert n_dates == glm_temps.shape[0]
     assert n_dates_pt == glm_temps_pt.shape[0]
-    #assert dates line up
     assert(glm_temps[0,-1] == meteo_dates[0])
     assert(glm_temps_pt[0,-1] == meteo_dates_pt[0])
     
@@ -327,8 +288,8 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
     obs = obs.values[:,1:] #remove needless nhd column
     n_obs = obs.shape[0]
 
-    # print("pretrain dates: ", start_date_pt, "->", end_date_pt)
-    # print("train dates: ", start_date, "->", end_date)
+    print("pretrain dates: ", start_date_pt, "->", end_date_pt)
+    print("train dates: ", start_date, "->", end_date)
     ############################################################
     #fill numpy matrices
     ##################################################################
@@ -382,41 +343,40 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
     if np.isnan(np.sum(feat_norm_mat)):
         raise Exception("ERROR: Preprocessing failed, there is missing data feat norm")
         sys.exit() 
-    if enable_glm:
-        if np.isnan(np.sum(glm_mat)):
-            # print("Warning: there is missing data in glm output")
-            for i in range(n_depths):
-                for t in range(n_dates):
-                    if np.isnan(glm_mat[i,t]):
-                        x = depths[i]
-                        xp = depths[0:(i)]
-                        yp = glm_mat[0:(i),t]
-                        if xp.shape[0] == 1:
-                            glm_mat[i,t] = glm_mat[i-1,t]
-                        else:
-                            f = interpolate.interp1d(xp, yp,  fill_value="extrapolate")
-                            glm_mat[i,t] = f(x) #interp_temp
 
-            assert not np.isnan(np.sum(glm_mat))
-        if np.isnan(np.sum(glm_mat_pt)):
-            # print("Warning: there is missing data in glm output")
-            for i in range(n_depths):
-                for t in range(n_dates_pt):
-                    if np.isnan(glm_mat_pt[i,t]):
-                        x = depths[i]
-                        xp = depths[0:(i)]
-                        yp = glm_mat_pt[0:(i),t]
-                        if xp.shape[0] == 1:
-                            glm_mat_pt[i,t] = glm_mat_pt[i-1,t]
-                        else:
-                            f = interpolate.interp1d(xp, yp,  fill_value="extrapolate")
-                            glm_mat_pt[i,t] = f(x) #interp_temp
+    #interpolate glm
+    if np.isnan(np.sum(glm_mat)):
+        # print("Warning: there is missing data in glm output")
+        for i in range(n_depths):
+            for t in range(n_dates):
+                if np.isnan(glm_mat[i,t]):
+                    x = depths[i]
+                    xp = depths[0:(i)]
+                    yp = glm_mat[0:(i),t]
+                    if xp.shape[0] == 1:
+                        glm_mat[i,t] = glm_mat[i-1,t]
+                    else:
+                        f = interpolate.interp1d(xp, yp,  fill_value="extrapolate")
+                        glm_mat[i,t] = f(x) #interp_temp
 
-            assert not np.isnan(np.sum(glm_mat_pt))
+        assert not np.isnan(np.sum(glm_mat))
+    if np.isnan(np.sum(glm_mat_pt)):
+        # print("Warning: there is missing data in glm output")
+        for i in range(n_depths):
+            for t in range(n_dates_pt):
+                if np.isnan(glm_mat_pt[i,t]):
+                    x = depths[i]
+                    xp = depths[0:(i)]
+                    yp = glm_mat_pt[0:(i),t]
+                    if xp.shape[0] == 1:
+                        glm_mat_pt[i,t] = glm_mat_pt[i-1,t]
+                    else:
+                        f = interpolate.interp1d(xp, yp,  fill_value="extrapolate")
+                        glm_mat_pt[i,t] = f(x) #interp_temp
+
+        assert not np.isnan(np.sum(glm_mat_pt))
 
     #observations, round to nearest 0.5m depth and put in train/test matrices
-    # obs[:,1] = np.round((obs[:,1]*2).astype(np.float)) / 2  #round
-    # print(depths)
     obs_g = 0
     obs_d = 0
 
@@ -436,6 +396,7 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
     first_train_date = obs[last_tst_obs_ind + 1,0]
     first_pretrain_date = meteo_dates_pt[0]
     last_pretrain_date = meteo_dates_pt[-1]
+   
     #test data
     n_tst_obs_placed = 0
     n_trn_obs_placed = 0
@@ -449,6 +410,7 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
             obs_d += 1
             continue
         if len(np.where(depths == np.round(obs[o,1]*2)/2)[0]) == 0:
+            print("depth value shouldn't exist")
             pdb.set_trace()
         depth_ind = np.where(depths == np.round(obs[o,1]*2)/2)[0][0]
         date_ind = np.where(meteo_dates == obs[o,0])[0][0]
@@ -477,29 +439,27 @@ for it_ct,nid in enumerate(ids): #for each new additional lake
         d_str = ", and "+str(obs_d) + " observations outside of combined date range of meteorological and GLM output"
     # if obs_g > 0 or obs_d > 0:
         # continue
-    print("lake " + str(ct) + ",  id: " + name + ": " + str(obs_g) + "/" + str(n_obs) + " observations greater than max depth " + str(max_depth) + d_str)
+    print("lake " + str(it_ct) + ",  id: " + name + ": " + str(obs_g) + "/" + str(n_obs) + " observations greater than max depth " + str(max_depth) + d_str)
     #write features and labels to processed data
     print("pre-training: ", first_pretrain_date, "->", last_pretrain_date, "(", n_pretrain, ")")
     print("training: ", first_train_date, "->", last_train_date, "(", n_trn, ")")
     print("testing: ", first_tst_date, "->", last_tst_date, "(", n_tst, ")")
-    if not os.path.exists("../../data/processed/lake_data/"+name): 
-        os.mkdir("../../data/processed/lake_data/"+name)
+    if not os.path.exists("../../data/processed/"+name): 
+        os.mkdir("../../data/processed/"+name)
     if not os.path.exists("../../models/"+name):
         os.mkdir("../../models/"+name)
-    feat_path_pt = "../../data/processed/lake_data/"+name+"/features_pt"
-    feat_path = "../../data/processed/lake_data/"+name+"/features"
-    norm_feat_path_pt = "../../data/processed/lake_data/"+name+"/processed_features_pt"
-    norm_feat_path = "../../data/processed/lake_data/"+name+"/processed_features"
-    glm_path_pt = "../../data/processed/lake_data/"+name+"/glm_pt"
-    glm_path = "../../data/processed/lake_data/"+name+"/glm"
-    trn_path = "../../data/processed/lake_data/"+name+"/train_b"
-    tst_path = "../../data/processed/lake_data/"+name+"/test_b"
-    full_path = "../../data/processed/lake_data/"+name+"/full"
-    dates_path = "../../data/processed/lake_data/"+name+"/dates"
-    dates_path_pt = "../../data/processed/lake_data/"+name+"/dates_pt"
+    feat_path_pt = "../../data/processed/"+name+"/features_pt"
+    feat_path = "../../data/processed/"+name+"/features"
+    norm_feat_path_pt = "../../data/processed/"+name+"/processed_features_pt"
+    norm_feat_path = "../../data/processed/"+name+"/processed_features"
+    glm_path_pt = "../../data/processed/"+name+"/glm_pt"
+    glm_path = "../../data/processed/"+name+"/glm"
+    trn_path = "../../data/processed/"+name+"/train"
+    tst_path = "../../data/processed/"+name+"/test"
+    full_path = "../../data/processed/"+name+"/full"
+    dates_path = "../../data/processed/"+name+"/dates"
+    dates_path_pt = "../../data/processed/"+name+"/dates_pt"
 
-    #geometry
-    # shutil.copyfile('../../data/raw/figure3/nhd_'+name+'_geometry.csv', "../../data/processed/WRR_69Lake/"+name+"/geometry")
 
     np.save(feat_path, feat_mat)
     np.save(feat_path_pt, feat_mat_pt)

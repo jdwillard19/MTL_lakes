@@ -1,0 +1,244 @@
+2020-09-20 18:23:33.027974
+pretraining finished in 510 epochs
+training finished in  10
+TRAINING COMPLETE for  1  hid : seed  0
+training finished in  9
+TRAINING COMPLETE for  1  hid : seed  1
+training finished in  37
+TRAINING COMPLETE for  1  hid : seed  2
+training finished in  9
+TRAINING COMPLETE for  1  hid : seed  3
+training finished in  9
+TRAINING COMPLETE for  1  hid : seed  4
+training finished in  17
+TRAINING COMPLETE for  2  hid : seed  0
+training finished in  29
+TRAINING COMPLETE for  2  hid : seed  1
+training finished in  33
+TRAINING COMPLETE for  2  hid : seed  2
+training finished in  11
+TRAINING COMPLETE for  2  hid : seed  3
+training finished in  18
+TRAINING COMPLETE for  2  hid : seed  4
+training finished in  29
+TRAINING COMPLETE for  5  hid : seed  0
+training finished in  19
+TRAINING COMPLETE for  5  hid : seed  1
+training finished in  57
+TRAINING COMPLETE for  5  hid : seed  2
+training finished in  10
+TRAINING COMPLETE for  5  hid : seed  3
+training finished in  30
+TRAINING COMPLETE for  5  hid : seed  4
+training finished in  22
+TRAINING COMPLETE for  10  hid : seed  0
+training finished in  20
+TRAINING COMPLETE for  10  hid : seed  1
+training finished in  29
+TRAINING COMPLETE for  10  hid : seed  2
+training finished in  9
+TRAINING COMPLETE for  10  hid : seed  3
+training finished in  29
+TRAINING COMPLETE for  10  hid : seed  4
+training finished in  43
+TRAINING COMPLETE for  15  hid : seed  0
+training finished in  20
+TRAINING COMPLETE for  15  hid : seed  1
+training finished in  40
+TRAINING COMPLETE for  15  hid : seed  2
+training finished in  45
+TRAINING COMPLETE for  15  hid : seed  3
+training finished in  48
+TRAINING COMPLETE for  15  hid : seed  4
+training finished in  80
+TRAINING COMPLETE for  20  hid : seed  0
+training finished in  46
+TRAINING COMPLETE for  20  hid : seed  1
+training finished in  65
+TRAINING COMPLETE for  20  hid : seed  2
+training finished in  58
+TRAINING COMPLETE for  20  hid : seed  3
+training finished in  49
+TRAINING COMPLETE for  20  hid : seed  4
+training finished in  61
+TRAINING COMPLETE for  25  hid : seed  0
+training finished in  78
+TRAINING COMPLETE for  25  hid : seed  1
+training finished in  131
+TRAINING COMPLETE for  25  hid : seed  2
+training finished in  67
+TRAINING COMPLETE for  25  hid : seed  3
+training finished in  71
+TRAINING COMPLETE for  25  hid : seed  4
+training finished in  97
+TRAINING COMPLETE for  30  hid : seed  0
+training finished in  153
+TRAINING COMPLETE for  30  hid : seed  1
+training finished in  95
+TRAINING COMPLETE for  30  hid : seed  2
+training finished in  65
+TRAINING COMPLETE for  30  hid : seed  3
+training finished in  95
+TRAINING COMPLETE for  30  hid : seed  4
+training finished in  74
+TRAINING COMPLETE for  35  hid : seed  0
+training finished in  92
+TRAINING COMPLETE for  35  hid : seed  1
+training finished in  130
+TRAINING COMPLETE for  35  hid : seed  2
+training finished in  48
+TRAINING COMPLETE for  35  hid : seed  3
+training finished in  99
+TRAINING COMPLETE for  35  hid : seed  4
+training finished in  75
+TRAINING COMPLETE for  40  hid : seed  0
+training finished in  102
+TRAINING COMPLETE for  40  hid : seed  1
+training finished in  113
+TRAINING COMPLETE for  40  hid : seed  2
+training finished in  66
+TRAINING COMPLETE for  40  hid : seed  3
+training finished in  78
+TRAINING COMPLETE for  40  hid : seed  4
+training finished in  72
+TRAINING COMPLETE for  45  hid : seed  0
+training finished in  90
+TRAINING COMPLETE for  45  hid : seed  1
+training finished in  145
+TRAINING COMPLETE for  45  hid : seed  2
+training finished in  75
+TRAINING COMPLETE for  45  hid : seed  3
+training finished in  91
+TRAINING COMPLETE for  45  hid : seed  4
+training finished in  100
+TRAINING COMPLETE for  50  hid : seed  0
+training finished in  112
+TRAINING COMPLETE for  50  hid : seed  1
+training finished in  119
+TRAINING COMPLETE for  50  hid : seed  2
+training finished in  108
+TRAINING COMPLETE for  50  hid : seed  3
+training finished in  184
+TRAINING COMPLETE for  50  hid : seed  4
+2020-09-20 18:55:18.051367
+pretraining finished in 515 epochs
+training finished in  10
+TRAINING COMPLETE for  1  hid : seed  0
+training finished in  14
+TRAINING COMPLETE for  1  hid : seed  1
+training finished in  44
+TRAINING COMPLETE for  1  hid : seed  2
+training finished in  24
+TRAINING COMPLETE for  1  hid : seed  3
+training finished in  9
+TRAINING COMPLETE for  1  hid : seed  4
+training finished in  9
+TRAINING COMPLETE for  2  hid : seed  0
+training finished in  29
+TRAINING COMPLETE for  2  hid : seed  1
+training finished in  60
+TRAINING COMPLETE for  2  hid : seed  2
+training finished in  11
+TRAINING COMPLETE for  2  hid : seed  3
+training finished in  24
+TRAINING COMPLETE for  2  hid : seed  4
+training finished in  36
+TRAINING COMPLETE for  5  hid : seed  0
+training finished in  30
+TRAINING COMPLETE for  5  hid : seed  1
+training finished in  53
+TRAINING COMPLETE for  5  hid : seed  2
+training finished in  16
+TRAINING COMPLETE for  5  hid : seed  3
+training finished in  16
+TRAINING COMPLETE for  5  hid : seed  4
+training finished in  59
+TRAINING COMPLETE for  10  hid : seed  0
+training finished in  57
+TRAINING COMPLETE for  10  hid : seed  1
+training finished in  122
+TRAINING COMPLETE for  10  hid : seed  2
+training finished in  21
+TRAINING COMPLETE for  10  hid : seed  3
+training finished in  64
+TRAINING COMPLETE for  10  hid : seed  4
+training finished in  69
+TRAINING COMPLETE for  15  hid : seed  0
+training finished in  99
+TRAINING COMPLETE for  15  hid : seed  1
+training finished in  69
+TRAINING COMPLETE for  15  hid : seed  2
+training finished in  51
+TRAINING COMPLETE for  15  hid : seed  3
+training finished in  46
+TRAINING COMPLETE for  15  hid : seed  4
+training finished in  61
+TRAINING COMPLETE for  20  hid : seed  0
+training finished in  287
+TRAINING COMPLETE for  20  hid : seed  1
+training finished in  83
+TRAINING COMPLETE for  20  hid : seed  2
+training finished in  113
+TRAINING COMPLETE for  20  hid : seed  3
+training finished in  44
+TRAINING COMPLETE for  20  hid : seed  4
+training finished in  116
+TRAINING COMPLETE for  25  hid : seed  0
+training finished in  274
+TRAINING COMPLETE for  25  hid : seed  1
+training finished in  121
+TRAINING COMPLETE for  25  hid : seed  2
+training finished in  72
+TRAINING COMPLETE for  25  hid : seed  3
+training finished in  188
+TRAINING COMPLETE for  25  hid : seed  4
+training finished in  59
+TRAINING COMPLETE for  30  hid : seed  0
+training finished in  261
+TRAINING COMPLETE for  30  hid : seed  1
+training finished in  217
+TRAINING COMPLETE for  30  hid : seed  2
+training finished in  125
+TRAINING COMPLETE for  30  hid : seed  3
+training finished in  119
+TRAINING COMPLETE for  30  hid : seed  4
+training finished in  118
+TRAINING COMPLETE for  35  hid : seed  0
+training finished in  385
+TRAINING COMPLETE for  35  hid : seed  1
+training finished in  176
+TRAINING COMPLETE for  35  hid : seed  2
+training finished in  105
+TRAINING COMPLETE for  35  hid : seed  3
+training finished in  116
+TRAINING COMPLETE for  35  hid : seed  4
+training finished in  99
+TRAINING COMPLETE for  40  hid : seed  0
+training finished in  247
+TRAINING COMPLETE for  40  hid : seed  1
+training finished in  211
+TRAINING COMPLETE for  40  hid : seed  2
+training finished in  103
+TRAINING COMPLETE for  40  hid : seed  3
+training finished in  129
+TRAINING COMPLETE for  40  hid : seed  4
+training finished in  92
+TRAINING COMPLETE for  45  hid : seed  0
+training finished in  255
+TRAINING COMPLETE for  45  hid : seed  1
+training finished in  180
+TRAINING COMPLETE for  45  hid : seed  2
+training finished in  139
+TRAINING COMPLETE for  45  hid : seed  3
+training finished in  155
+TRAINING COMPLETE for  45  hid : seed  4
+training finished in  102
+TRAINING COMPLETE for  50  hid : seed  0
+training finished in  238
+TRAINING COMPLETE for  50  hid : seed  1
+training finished in  357
+TRAINING COMPLETE for  50  hid : seed  2
+training finished in  159
+TRAINING COMPLETE for  50  hid : seed  3
+training finished in  82
+TRAINING COMPLETE for  50  hid : seed  4

@@ -1,0 +1,6 @@
+../data/phys_operations.py:85: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  exponent = torch.tensor((9.28603523 - (2332.37885/(temp+273.15)))*math.log(10))
+Traceback (most recent call last):
+  File "train_PGDL_custom_sparse.py", line 461, in <module>
+    u_depths = np.unique(all_data[:,0,0])
+TypeError: 'NoneType' object is not subscriptable
