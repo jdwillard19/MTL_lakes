@@ -27,7 +27,7 @@ ids = ids[0].values
 n_lakes = len(train_lakes)
 test_lakes = ids[~np.isin(ids, train_lakes)]
 assert len(test_lakes) == 305
-k = 9
+
 output_to_file = True
 
 save_file_path = "../../results/pgmtl_results_ens_9source.csv"
@@ -37,6 +37,9 @@ save_file_path = "../../results/pgmtl_results_ens_9source.csv"
 feats = ['n_obs_sp', 'n_obs_su', 'dif_max_depth', 'dif_surface_area',
        'dif_glm_strat_perc', 'perc_dif_max_depth', 'perc_dif_surface_area',
        'perc_dif_sqrt_surface_area']
+
+#paste "k" value found in findEnsembleK.py here
+k = 9
 ###################################################################################
 
 
@@ -258,7 +261,7 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
     loss_output = total_output_npy[~np.isnan(label_mats)]
     loss_label = label_mats[~np.isnan(label_mats)]
     mat_rmse = np.sqrt(((loss_output - loss_label) ** 2).mean())
-    mat_csv.append(",".join(["nhdhr_"+target_id," : ".join(["nhdhr_"+ source_id for source_id in top_ids]), str(glm_rmse),str(mat_rmse)] + [str(x) for x in lake_df.iloc[i][feats].values]))
+    mat_csv.append(",".join(["nhdhr_"+target_id," : ".join([source_id for source_id in top_ids]), str(glm_rmse),str(mat_rmse)] + [str(x) for x in lake_df.iloc[i][feats].values]))
 
     print("Total rmse=", mat_rmse)
     spcorr = srcorr_per_lake[targ_ct]

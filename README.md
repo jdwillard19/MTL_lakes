@@ -46,12 +46,24 @@ Steps to run MTL pipeline
 `python pbmtl_train_metamodel.py`
 `python pgmtl_train_metamodel.py`
 
-10. Using hyperparameters found in Step 8, Experiments 1 and 3 can now be performed using the following scripts (code in src/evaluate/)
-`python predict_pb-mtl.py`
+10. Find the optimal number "k" of lakes to ensemble for PG-MTL9, using features found in Step 7 (must manually past in code, directions in comments of below scripts). Can be run simultaneously as Step 9. (code in src/metamodel/)
+`python findEnsembleK.py`
+
+11. Using hyperparameters found in Step 8, Experiments 1 and 3 can now be performed using the following scripts (code in src/evaluate/)
+`python predict_pb-mtl.py` - process-based model selection, single source
+`python predict_pb-mtl145.py` -  process-based model selection, all possible  sources
+`python predict pb_mtl_extended` - process-based model selection for expanded test set of 1882 lakes
+`python predict_pg-mtl.py` - PGDL model selection, single source
+`python predict_pg-mtl9.py` - PGDL model selection, ensembled sources (specify k in file)
+`python predict_pg-mtl145.py` - PGDL run all PGDL sources on targets
 
 
-11. For Experiment 2, build additional PGDL models with different levels of sparsify (formatted for running on HPC, may have to customize to different HPC cluster if not on UMN MSI) (code in src/train/))
-`python job_create_`
+12. For Experiment 2, build additional PGDL models with different levels of sparsify (formatted for running on HPC, may have to customize to different HPC cluster if not on UMN MSI) (code in src/train/))
+`python job_create_pgml_sparse.py`
+`qsub /jobs/qsub_script_pgml_sparse.sh` (mass submit script created in previous command)
+
+13. Compile results for completed jobs in Step 12 (code in src/evaluate/)
+`python runCustomSparseModels.py`
 
 
 
@@ -63,20 +75,30 @@ Steps to run MTL pipeline
 
 
 
-Project Organization
+Project Organization (note: \[lake_id*\] can be any number of lake site ids)
 ------------
 
     ├── LICENSE
-    ├── README.md          <- The top-level README for developers using this project.
-    ├── data
-    │   ├── processed      <- The final, canonical data sets for modeling.
-    │   └── raw            <- The original, immutable data dump.
-    |       └──sb_mtl_data_release <- contains all files downloaded from USGS data release
-    ├── models             <- Trained and serialized models, model predictions, or model summaries
+    ├── README.md           <- The top-level README for developers using this project.
+    ├── data/               <- Primary data storage directory
+        |
+        ├── processed/      <- The final, canonical data sets for modeling.
+        └── raw/            <- The original, immutable data dump.
+            └── sb_mtl_data_release <- contains all files downloaded from USGS data release
+    |
+    ├── models/             <- Trained and serialized models, model predictions, or model summaries
+        |
+        └── [lake_id*]/    <- Models specific to individual lake
     │
+    ├── results/            <- Experiment results and results used to train metamodels 
+        |
+        ├── [lake_id*]/    <- Results specific to individual lake
+        ├── glm_transfer/    <- results of GLM parameter transfer between lakes
+        └── transfer_learning <- results of PGDL transfers between lakes
+            |
+            └── target_[lake_id*] <- results of transfering to particular target lake
     │
     ├── src                <- Source code for use in this project.
-        ├── __init__.py    <- Makes src a Python module
         │
         ├── data           <- Scripts to download, preprocess, or operate on data
             |
@@ -99,24 +121,30 @@ Project Organization
             ├── calculateMetadata.py - record metadata for each lake
             ├── createMetadataDiffs.py - record metadata differences between lakes
             └── createMetadataDiffsPB.py - record metadata differences between lakes for PB-MTL training
-
     models to make
+        |
         ├── metamodel         <- Scripts to build metamodel  
-    |   |   ├── pbmtl_feature_selection.py - feature selection for pb-mtl
-    |   |   ├── pgmtl_feature_selection.py - feature selection for pg-mtl
-    |   |   ├── pbmtl_hyperparameter_search.py - find params for pb-mtl
-    |   |   ├── pgmtl_hyperparameter_search.py - find params for pg-mtl
-    |   |   ├── pbmtl_train_metamodel.py - train pb-mtl metamodel
-    |   |   └── pgmtl_train_metamodel.py - train pg-mtl metamodel
-    │   │
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
-    |           └──ec_experiment.py <- initial energy conservation experiment
-    │   │   └── predict_model.py
-    │   │
-    └──
+            |
+            ├── pbmtl_feature_selection.py - feature selection for pb-mtl
+            ├── pgmtl_feature_selection.py - feature selection for pg-mtl
+            ├── pbmtl_hyperparameter_search.py - find params for pb-mtl
+            ├── pgmtl_hyperparameter_search.py - find params for pg-mtl
+            ├── pbmtl_train_metamodel.py - train pb-mtl metamodel
+            └── pgmtl_train_metamodel.py - train pg-mtl metamodel
+        |
+        ├── evaluate         <- Scripts to evaluate operations framework performance
+            |
+            ├── predict_pb-mtl.py
+            ├── predict_pb-mtl145.py
+            ├── predict_pb-mtl_expanded.py
+            ├── predict_pg-mtl.py
+    
+        |
+        └──  models         <- Scripts to support operations on models 
+            |
+            └── pytorch_model_operations <- helper functions for model ops 
+         
+
 
 
 --------
