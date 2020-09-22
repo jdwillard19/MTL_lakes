@@ -262,7 +262,7 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
         lake_output_path = output_path+target_id
         if not os.path.exists(lake_output_path):
             os.mkdir(lake_output_path)
-        output_df.to_feather(lake_output_path"/PGMTL_outputs.feather")
+        output_df.to_feather(lake_output_path+"/PGMTL_outputs.feather")
         
     loss_output = total_output_npy[~np.isnan(label_mats)]
     loss_label = label_mats[~np.isnan(label_mats)]
