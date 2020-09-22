@@ -174,6 +174,7 @@ for n in range(n_fold):
             label_mats[:] = np.nan
 
             for i, source_id in enumerate(top_ids): 
+                source_id = re.search('nhdhr_(.*)', source_id).group(1)
                 #for each top id
 
                 #load source model
