@@ -238,7 +238,7 @@ for targ_ct, target_id in enumerate(test_lakes): #for each target lake
                 print(source_id+" rmse=", mat_rmse)
                 err_per_source[i,targ_ct] = mat_rmse
 
-                glm_rmse = float(metadata.loc[target_id].glm_uncal_rmse_full)
+                glm_rmse = float(metadata.loc["nhdhr_"+target_id].glm_uncal_rmse_full)
 
                 mat_csv.append(",".join(["nhdhr_"+target_id,"nhdhr_"+ source_id,str(meta_rmse_per_lake[targ_ct]),str(srcorr_per_lake[targ_ct]), str(glm_rmse),str(mat_rmse)] + [str(x) for x in lake_df.iloc[i][feats].values]))
 
