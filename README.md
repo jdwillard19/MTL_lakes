@@ -1,8 +1,8 @@
-Meta Transfer Learning application for water temperature prediction of unmonitored lakes. 
+Meta Transfer Learning application for water temperature prediction of unmonitored lakes in support of the manuscript "Willard, Jared D., et al. "Predicting Water Temperature Dynamics of Unmonitored Lakes with Meta Transfer Learning." arXiv preprint arXiv:2011.05369 (2020)." submitted to Water Resources Research. 
 
 ==============================
 
-This code uses data from 2233 total lakes in the Midwestern United States to demonstrate a method for predicting water temperature at depth in situations where no temperature data is available. Method descriptions can be found in ("INSERT PREPRINT HERE")
+This code uses data from 2233 total lakes in the Midwestern United States to demonstrate a method for predicting water temperature at depth in situations where no temperature data is available. Method descriptions can be found in cited preprint above. 
 
 
 
